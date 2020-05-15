@@ -5,9 +5,11 @@
 #include "stm8s.h"
 #include "i2c.h"
 
+#include "font.h"
 // Configuration
 
 #define SSD1306_I2C_ADDR   (0x78)
+//(0x78)
 
 #define SSD1306_128_64
 
@@ -15,8 +17,13 @@
 #define ssd1306_swap(a, b) \
   (((a) ^= (b)), ((b) ^= (a)), ((a) ^= (b))) ///< No-temp-var swap operation
 
-#define getRotation()  (0)
+#define SSD1306_SCREEN_ROTATION  (0)
 
+
+#define SSD1306_SHIFT_DC           0x06
+#define SSD1306_SHIFT_CO           0x07
+#define SSD1306_COMMAND            (0<<SSD1306_SHIFT_CO) | (0<<SSD1306_SHIFT_DC)
+#define SSD1306_DATA               (0<<SSD1306_SHIFT_CO) | (1<<SSD1306_SHIFT_DC)
 
 #define SSD1306_MEMORYMODE          0x20 ///< See datasheet
 #define SSD1306_COLUMNADDR          0x21 ///< See datasheet
@@ -43,8 +50,8 @@
 #define SSD1306_SETHIGHCOLUMN       0x10 ///< Not currently used
 #define SSD1306_SETSTARTLINE        0x40 ///< See datasheet
 
-#define SSD1306_EXTERNALVCC         0x01 ///< External display voltage source
-#define SSD1306_SWITCHCAPVCC        0x02 ///< Gen. display voltage from 3.3V
+#define SSD1306_EXTERNALVCC         0x10 ///< External display voltage source
+#define SSD1306_SWITCHCAPVCC        0x14 ///< Gen. display voltage from 3.3V
 
 #define SSD1306_RIGHT_HORIZONTAL_SCROLL              0x26 ///< Init rt scroll
 #define SSD1306_LEFT_HORIZONTAL_SCROLL               0x27 ///< Init left scroll
@@ -57,34 +64,35 @@
 #if defined SSD1306_128_64
  #define SSD1306_LCDWIDTH  128 ///width w/SSD1306_128_64 defined
  #define SSD1306_LCDHEIGHT  64 ///height w/SSD1306_128_64 defined
- #define SSD1306_COM_PINS  0x02
+ #define SSD1306_COM_PINS  ((1<<4)|(0<<5))
  #define SSD1306_CONTRAST  0x8F
 #endif
 #if defined SSD1306_128_32
  #define SSD1306_LCDWIDTH  128 ///< DEPRECATED: width w/SSD1306_128_32 defined
  #define SSD1306_LCDHEIGHT  32 ///< DEPRECATED: height w/SSD1306_128_32 defined
+ #define SSD1306_COM_PINS  0x02
+ #define SSD1306_CONTRAST  0x8F
 #endif
 #if defined SSD1306_96_16
  #define SSD1306_LCDWIDTH   96 ///< DEPRECATED: width w/SSD1306_96_16 defined
  #define SSD1306_LCDHEIGHT  16 ///< DEPRECATED: height w/SSD1306_96_16 defined
 #endif
 
-#define HEIGHT SSD1306_LCDHEIGHT
-#define WIDTH  SSD1306_LCDWIDTH
+
+#define BUFFER_HEIGHT 16 //SSD1306_LCDHEIGHT
+#define BUFFER_WIDTH  16 // SSD1306_LCDWIDTH
 
 static const uint8_t ssd1306_init_array [] = {
-    0, // Co = 0, D/C = 0
     SSD1306_DISPLAYOFF,                   // 0xAE
     SSD1306_SETDISPLAYCLOCKDIV,           // 0xD5
     0x80,                                 // the suggested ratio 0x80
     SSD1306_SETMULTIPLEX,
-    SSD1306_LCDHEIGHT,
+    0x3f, //SSD1306_LCDHEIGHT,
     SSD1306_SETDISPLAYOFFSET,             // 0xD3
     0x0,                                  // no offset
     SSD1306_SETSTARTLINE | 0x0,           // line #0
     SSD1306_CHARGEPUMP,
-    // use internal VCC from +3.3
-    SSD1306_SWITCHCAPVCC,
+    SSD1306_SWITCHCAPVCC, // use internal VCC from +3.3
     SSD1306_MEMORYMODE,                   // 0x20
     0x00,                                 // 0x0 act like ks0108
     SSD1306_SEGREMAP | 0x1,
@@ -106,72 +114,130 @@ static const uint8_t ssd1306_init_array [] = {
 };
 
 
-static uint8_t cmd_mem_buffer[7+(WIDTH * ((HEIGHT + 7) / 8))] = {
-    SSD1306_PAGEADDR,
-    0,                         // Page start address
-    0xFF,                      // Page end (not really, but works here)
-    SSD1306_COLUMNADDR,
-    0,
-    WIDTH-1,
-    0x40
-};
-//static uint8_t * const buffer = cmd_mem_buffer+7;
+static uint8_t video_buffer[BUFFER_WIDTH * BUFFER_HEIGHT/8];
 
+static void ssd1306_display_buffer(uint8_t x_offset, uint8_t y_offset,
+                                   uint8_t width, uint8_t height,
+                                   uint8_t *buf, uint8_t len);
 void ssd1306_init() {
-        //buffer[1] = 1;
-        //buffer[2] = 2;
-        //buffer[3] = 3;
-        //buffer[4] = 4;
-        //buffer[5] = 5;
 
-    cmd_mem_buffer[7+10] = 0xa;
-    cmd_mem_buffer[7+11] = 0xb;
-    cmd_mem_buffer[7+12] = 0xc;
-    cmd_mem_buffer[7+13] = 0xd;
+    ssd1306_clearDisplayBuffer();
 
-    i2c_write_array(SSD1306_I2C_ADDR,
-                    ssd1306_init_array,
-                    sizeof(ssd1306_init_array));
-    ssd1306_clearDisplay();
-    
+    i2c_write_reg_array(SSD1306_I2C_ADDR,
+                        SSD1306_COMMAND,
+                        ssd1306_init_array,
+                        sizeof(ssd1306_init_array));
+
+    ssd1306_clear_display();
+
 }
 
 
 
 void ssd1306_drawPixel(uint16_t x, uint16_t y, uint16_t color) {
-  if((x >= 0) && (x < WIDTH) && (y >= 0) && (y < HEIGHT)) {
+  if((x < BUFFER_WIDTH) && (y < BUFFER_HEIGHT)) {
     // Pixel is in-bounds. Rotate coordinates if needed.
-    switch(getRotation()) {
-     case 1:
+#if (SSD1306_SCREEN_ROTATION==1)
       ssd1306_swap(x, y);
       x = WIDTH - x - 1;
-      break;
-     case 2:
+#elif (SSD1306_SCREEN_ROTATION==2)
       x = WIDTH  - x - 1;
       y = HEIGHT - y - 1;
-      break;
-     case 3:
+#elif (SSD1306_SCREEN_ROTATION==2)
       ssd1306_swap(x, y);
       y = HEIGHT - y - 1;
-      break;
-    }
-    switch(color) {
-     case SSD1306_WHITE:   cmd_mem_buffer[7+x + (y/8)*WIDTH] |=  (1 << (y&7)); break;
-     case SSD1306_BLACK:   cmd_mem_buffer[7+x + (y/8)*WIDTH] &= ~(1 << (y&7)); break;
-     case SSD1306_INVERSE: cmd_mem_buffer[7+x + (y/8)*WIDTH] ^=  (1 << (y&7)); break;
-    }
+#endif
+
+      switch(color) {
+      case SSD1306_WHITE:
+          video_buffer[x + (y/8)*BUFFER_WIDTH] |=  (1 << (y&7));
+          break;
+      case SSD1306_BLACK:
+          video_buffer[x + (y/8)*BUFFER_WIDTH] &= ~(1 << (y&7));
+          break;
+      case SSD1306_INVERSE:
+          video_buffer[x + (y/8)*BUFFER_WIDTH] ^=  (1 << (y&7));
+          break;
+      }
   }
 }
 
-void ssd1306_clearDisplay(void) {
+void ssd1306_clearDisplayBuffer(void) {
     int i;
-    //for(i=0; i< WIDTH * ((HEIGHT + 7) / 8); i++)
-    //    cmd_mem_buffer[7+i] = 0;
-        // memset(&cmd_mem_buffer[7], 0xff, WIDTH * ((HEIGHT + 7) / 8));
+    for(i=0; i< sizeof(video_buffer); i++) {
+        video_buffer[i] = 0x0;
+    }
 }
 
 
-void ssd1306_display(void) {
+void ssd1306_display_video_buffer(uint8_t x_offset, uint8_t y_offset) {
+    ssd1306_display_buffer(
+        x_offset, y_offset,
+        BUFFER_WIDTH, BUFFER_HEIGHT,
+        video_buffer,
+        sizeof(video_buffer));
+}
 
-    i2c_write_array(SSD1306_I2C_ADDR, cmd_mem_buffer, sizeof(cmd_mem_buffer));
+void ssd1306_clear_display(void) {
+    const uint8_t cmd_send_video_buffer[] = {
+        SSD1306_PAGEADDR,
+        0,
+        SSD1306_LCDHEIGHT-1,
+        SSD1306_COLUMNADDR,
+        0,
+        SSD1306_LCDWIDTH-1,
+    };
+    i2c_write_reg_array(SSD1306_I2C_ADDR,
+                        SSD1306_COMMAND,
+                        cmd_send_video_buffer,
+                        sizeof(cmd_send_video_buffer));
+    i2c_memset_reg_array(SSD1306_I2C_ADDR, SSD1306_DATA, 0x0, SSD1306_LCDWIDTH*SSD1306_LCDHEIGHT);
+}
+
+
+void ssd1306_display_char(unsigned char ch, uint8_t x, uint8_t y) {
+    uint8_t *buf;
+    if(ch >= '0' && ch <= '9') {
+        buf = font_table_digits[ch-'0'];
+    } else if(ch >= 'a' && ch <= 'z') {
+        buf = font_table_letters[ch-'a'];
+    } else if(ch >= 'A' && ch <= 'Z') {
+        buf = font_table_letters[ch-'A'];
+    } else {
+        buf = video_buffer;
+    }
+
+    ssd1306_display_buffer(
+        x,
+        y,
+        FONT_WIDTH, FONT_HEIGHT,
+        buf,
+        FONT_WIDTH*FONT_HEIGHT/8);
+
+}
+
+
+
+static void ssd1306_display_buffer(uint8_t x_offset, uint8_t y_offset,
+                                   uint8_t width, uint8_t height,
+                                   uint8_t *buf, uint8_t len) {
+    uint8_t cmd_send_video_buffer[] = {
+        SSD1306_PAGEADDR,
+        0,
+        0,
+        SSD1306_COLUMNADDR,
+        0,
+        0,
+        };
+
+    cmd_send_video_buffer[1] = y_offset/8;
+    cmd_send_video_buffer[2] = y_offset/8 + height/8-1;
+    cmd_send_video_buffer[4] = x_offset;
+    cmd_send_video_buffer[5] = x_offset + width - 1;
+    i2c_write_reg_array(SSD1306_I2C_ADDR,
+                        SSD1306_COMMAND,
+                        cmd_send_video_buffer,
+                        sizeof(cmd_send_video_buffer));
+
+    i2c_write_reg_array(SSD1306_I2C_ADDR, SSD1306_DATA, buf, len);
 }

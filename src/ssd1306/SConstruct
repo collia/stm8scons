@@ -15,6 +15,7 @@ stm_device='STM8S003'
 env.Append(CPPPATH = [
     '#inc', 
     '#inc/stm8s/inc',
+    '#font',
     ])
 
 # compiler flags
