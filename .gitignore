@@ -55,3 +55,12 @@ dkms.conf
 
 #editor files
 *~
+
+#sdcc files
+*.asm
+*.lst
+*.rst
+*.sym
+
+SConstruct
+*.dblite
