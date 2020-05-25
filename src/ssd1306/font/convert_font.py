@@ -11,7 +11,7 @@ def get_char_pixels(fontname, c, size):
     font = ImageFont.truetype(fontname, int(size*1.5))
     draw.text((0, -5), c, font=font)
 
-    #image.show()
+    image.show()
     return image.load();
 
 def generate_header_head(size):
@@ -57,8 +57,11 @@ if len(sys.argv) < 2:
 #char_table =  [("digits", string.digits),
 #               ("uppercase", string.ascii_uppercase),
 #               ("lowercase", string.ascii_lowercase)]
-char_table =  [("digits", string.digits),
-               ("letters", string.ascii_uppercase)]
+#char_table =  [("digits", string.digits),
+#               ("letters", string.ascii_uppercase)]
 #char_table =  [("letters", ['A'])]
+#char_table =  [("fractions", ['\u00BD', '\u00BC','\u215B'])]
+#char_table =  [("fractions", ['\u00'])]
+
 
 print(generate_font_header(sys.argv[1], int(sys.argv[2]), char_table))

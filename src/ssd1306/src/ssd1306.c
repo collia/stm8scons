@@ -9,9 +9,6 @@
 // Configuration
 
 #define SSD1306_I2C_ADDR   (0x78)
-//(0x78)
-
-#define SSD1306_128_64
 
 
 #define ssd1306_swap(a, b) \
@@ -19,7 +16,7 @@
 
 #define SSD1306_SCREEN_ROTATION  (0)
 
-
+//Registers
 #define SSD1306_SHIFT_DC           0x06
 #define SSD1306_SHIFT_CO           0x07
 #define SSD1306_COMMAND            (0<<SSD1306_SHIFT_CO) | (0<<SSD1306_SHIFT_DC)

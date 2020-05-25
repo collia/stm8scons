@@ -36,6 +36,8 @@ env.Append(LINKFLAGS = [
 # defines
 env.Append(CPPDEFINES = [
     stm_device,
+    "SSD1306_128_64",
+    "DEBUG"
 ])
 
 
@@ -49,6 +51,7 @@ prg = env.Program(
     target = 'main',
     source = [
         'build/src/main.c',
+        'build/src/terminal.c',
         'build/src/debug.c',
         'build/src/i2c.c',
         'build/src/ssd1306.c',

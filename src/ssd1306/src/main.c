@@ -2,17 +2,24 @@
 #include "stm8s_gpio.h"
 #include "i2c.h"
 #include "debug.h"
-#include "ssd1306.h"
+//#include "ssd1306.h"
+#include "terminal.h"
 
 void clock_setup(void);
 
 int main()
 {
+    uint8_t x = 0;
+    uint8_t y = 0;
+        
+#if 0
     int x = 0;
     int y = 0;
     int offset_x = 0;
     int offset_y = 0;
+#endif
     unsigned char ch = '0';
+    uint16_t c =0;
     debug_init();
 
     clock_setup();
@@ -22,7 +29,7 @@ int main()
 
     while(1) {
         int i = 0;
-        for(i = 0; i < 16000; i++);
+        for(i = 0; i < 8000; i++);
         //debug_blink_1_sec();
 #if 0
         ssd1306_drawPixel(x, y, SSD1306_WHITE);
@@ -42,7 +49,7 @@ int main()
         }
 
         ssd1306_display_video_buffer(offset_x, offset_y);
-#else
+#elif 0
 
         ssd1306_display_char(ch, offset_x, offset_y);
         ch++;
@@ -61,7 +68,27 @@ int main()
         if(offset_y > 64-16) {
             offset_y = 0;
         }
+#elif 0
+        term_print_char(ch, x, y);
+        ch++;
+        if((ch >'9') && (ch <'A'))
+            ch = 'A';
+        else if((ch >'Z') && (ch <'a'))
+            ch = 'a';
+        else if(ch >'z')
+            ch = '0';
 
+        x++;
+        if(x >= 8) {
+            x = 0;
+            y++;
+        }
+        if(y > 3) y = 0;
+#elif 1
+        term_print("Hello", 0, 0);   
+        term_print("World", 0, 1);
+        term_print_int(c, 0, 3);
+        c++;
 #endif
     }
 }

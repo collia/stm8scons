@@ -8,6 +8,7 @@
 -l stm8
 -l stm8
 build/src/main.rel
+build/src/terminal.rel
 build/src/debug.rel
 build/src/i2c.rel
 build/src/ssd1306.rel
