@@ -193,28 +193,29 @@ void ssd1306_clear_display(void) {
 }
 
 
-void ssd1306_display_char(unsigned char ch, uint8_t x, uint8_t y) {
+void ssd1306_display_char(fonts f, unsigned char ch, uint8_t x, uint8_t y) {
     uint8_t *buf;
-    if(ch >= '0' && ch <= '9') {
-        buf = font_table_digits[ch-'0'];
-    } else if(ch >= 'a' && ch <= 'z') {
-        buf = font_table_letters[ch-'a'];
-    } else if(ch >= 'A' && ch <= 'Z') {
-        buf = font_table_letters[ch-'A'];
-    } else {
-#ifdef SSD1306_GRAPH_MODE
-        buf = video_buffer;
-#else
-        buf = font_table_letters[0];
-#endif
-    }
+    uint8_t char_width;
+    uint8_t char_height;
 
+    switch(f) {
+    case BIG_FONT:
+        buf = big_font_char_table[ch];
+        char_width = BIG_FONT_WIDTH;
+        char_height = BIG_FONT_HEIGHT;
+        break;
+    case SMALL_FONT:
+        buf = small_font_char_table[ch];
+        char_width = SMALL_FONT_WIDTH;
+        char_height = SMALL_FONT_HEIGHT;
+        break;
+    }
     ssd1306_display_buffer(
         x,
         y,
-        FONT_WIDTH, FONT_HEIGHT,
+        char_width, char_height,
         buf,
-        FONT_WIDTH*FONT_HEIGHT/8);
+        char_width*char_width/8);
 
 }
 

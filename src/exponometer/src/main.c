@@ -22,6 +22,39 @@ static void run_calibration(void);
 static void run_exposure(void);
 static void run_delay(void);
 
+//Strings
+const unsigned char cal_line[] = {
+    BIG_FONT_LATIN_CAPITAL_LETTER_C,
+    BIG_FONT_LATIN_CAPITAL_LETTER_A,
+    BIG_FONT_LATIN_CAPITAL_LETTER_L,
+};
+const unsigned char exp_line[] = {
+    BIG_FONT_LATIN_CAPITAL_LETTER_E,
+    BIG_FONT_LATIN_CAPITAL_LETTER_X,
+    BIG_FONT_LATIN_CAPITAL_LETTER_P,
+};
+const unsigned char time_line[] = {
+    BIG_FONT_LATIN_CAPITAL_LETTER_T,
+    BIG_FONT_LATIN_CAPITAL_LETTER_I,
+    BIG_FONT_LATIN_CAPITAL_LETTER_M,
+};
+const unsigned char lux_line[] = {
+    BIG_FONT_LATIN_CAPITAL_LETTER_L,
+    BIG_FONT_LATIN_CAPITAL_LETTER_U,
+    BIG_FONT_LATIN_CAPITAL_LETTER_X,
+};
+
+const unsigned char lux_error_line[] = {
+    SMALL_FONT_HYPHEN_MINUS,
+    SMALL_FONT_HYPHEN_MINUS,
+    SMALL_FONT_HYPHEN_MINUS,
+    SMALL_FONT_PLUS_SIGN,
+    SMALL_FONT_LATIN_CAPITAL_LETTER_E,
+    SMALL_FONT_HYPHEN_MINUS,
+    SMALL_FONT_HYPHEN_MINUS,
+};
+
+
 typedef enum {
     MODE_CALIBRATION,
     MODE_MEASHURE_EXPOSURE,
@@ -46,7 +79,7 @@ int main()
 {
     device_mode mode = MODE_CALIBRATION;
     uint8_t msg, prev_btn_msg = MESSAGE_BUTTONS_RELEASED;
-    
+
     debug_init();
     clock_setup();
     time_init();
@@ -117,15 +150,16 @@ static void clock_setup(void) {
 }
 
 static void init_calibration(void) {
-    term_print("CAL", 0, 0);
-    term_print("LUX", 0, 1);
-    term_print("---E--",0, 2);
+
+    term_print(BIG_FONT, cal_line, sizeof(cal_line), 0, 0);
+    term_print(BIG_FONT, lux_line, sizeof(lux_line), 0, 1);
+    term_print(SMALL_FONT, lux_error_line, sizeof(lux_error_line), 0, 4);
 }
 static void init_exposure(void) {
-    term_print("EXP", 0, 0);
+    term_print(BIG_FONT, exp_line, sizeof(exp_line), 0, 0);
 }
 static void init_delay(void) {
-    term_print("DEL", 0, 0);
+    term_print(BIG_FONT, time_line, sizeof(time_line), 0, 0);
 }
 
 static void run_calibration() {
@@ -139,14 +173,14 @@ static void run_calibration() {
     i = 0;
     lux = max44009_get_lux();
     if(lux < 0) {
-        term_print("---E--", 0, 2);
+        term_print(SMALL_FONT, lux_error_line, sizeof(lux_error_line), 0, 4);
     } else {
-        term_print_int(
+        term_print_int(SMALL_FONT,
             lux & 0xff,
-            0, 2, 3);
-        term_print_int(
+            0, 4, 3);
+        term_print_int(SMALL_FONT,
             (lux & 0xf00) >> 8,
-            4, 2, 2);
+            5, 4, 2);
     }
 }
 static void run_exposure() {
