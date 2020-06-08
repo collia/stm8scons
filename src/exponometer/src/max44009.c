@@ -20,15 +20,22 @@
 
 
 void max44009_init() {
+    EXTI_SetExtIntSensitivity(EXTI_PORT_GPIOA,
+                              EXTI_SENSITIVITY_RISE_FALL);
+
+    GPIO_Init(EXTI_PORT_GPIOA,
+              GPIO_PIN_3,
+              GPIO_MODE_IN_PU_IT);
+
 }
 
 
-int max44009_get_lux() {
+uint16_t max44009_get_lux() {
     uint16_t res;
     uint8_t low ;
     uint8_t hi;
     int rc;
-    // Lux = 2^(EXP) * Mantissa * 0.45
+    // Lux = 2^(EXP) * Mantissa * 0.045
     // EXP = HIGHT[7:4]
     // Mantissa = HIGHT[3:0] LOW[3:0]
     rc = i2c_read_byte(MAX44009_ADDR, MAX44009_LUX_HIGHT);

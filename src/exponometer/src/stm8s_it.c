@@ -31,7 +31,6 @@ INTERRUPT_HANDLER(EXTI_PORTB_IRQHandler, 4)
 INTERRUPT_HANDLER(EXTI_PORTC_IRQHandler, 5)
 {
     buttons_irq_handler();
-    //debug_blink_once();
 }
 
 INTERRUPT_HANDLER(EXTI_PORTD_IRQHandler, 6)
@@ -75,7 +74,6 @@ INTERRUPT_HANDLER(TIM2_CAP_COM_IRQHandler, 14)
 
 INTERRUPT_HANDLER(I2C_IRQHandler, 19)
 {
-    i2c_irq_handler();
 }
  INTERRUPT_HANDLER(ADC1_IRQHandler, 22)
 {

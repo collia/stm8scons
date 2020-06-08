@@ -38,20 +38,30 @@ void term_print(fonts f, unsigned char str[], uint8_t strlen, uint8_t column, ui
     }
 }
 
-void term_print_int(fonts f, uint16_t val,  uint8_t column, uint8_t row, uint8_t len) {
+void term_print_int(fonts f, int16_t val,  uint8_t column, uint8_t row, uint8_t len) {
     #define INT_STR_MAX_LEN 4
     unsigned char buffer[INT_STR_MAX_LEN+1];
     uint8_t i;
     uint8_t zero;
-
-    zero = SMALL_FONT_DIGIT_ZERO;
+    uint8_t offset = 0;
+    if(f == BIG_FONT) {
+        zero = BIG_FONT_DIGIT_ZERO;
+        buffer[0] = BIG_FONT_HYPHEN_MINUS;
+    } else if (f == SMALL_FONT) {
+        zero = SMALL_FONT_DIGIT_ZERO;
+        buffer[0] = SMALL_FONT_HYPHEN_MINUS;
+    }
+    if(val < 0) {
+        offset = 1;
+        len--;
+    }
     buffer[len] = 0;
     for(i = 0; i < len; i++) {
         if(val) {
-            buffer[len-1-i] = val % 10 + zero;
+            buffer[len-1-i + offset] = val % 10 + zero;
             val /= 10;
         } else {
-            buffer[len-1-i] = zero;
+            buffer[len-1-i + offset] = zero;
         }
     }
     term_print(f, buffer, len, column, row);

@@ -1,0 +1,27 @@
+env=Environment(VAR="value")
+
+env.Append(LINKFLAGS = [
+    '-lm',
+    ])
+
+env.VariantDir('.', '../src', duplicate=0)
+
+env.Append(CPPPATH = [
+    '#../inc',
+    '.'
+    ])
+
+prg = [
+    env.Program(
+        target = 'test_log2',
+        source = [
+            'test_log2.c',
+        ]
+    ),
+    env.Program(
+        target = 'test_exposure',
+        source = [
+            'test_exposure.c',
+            '../src/exponometer.c',
+        ]
+    )]

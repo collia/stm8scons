@@ -8,7 +8,7 @@ struct message {
     uint8_t  flag; // 0 - message not ready
 };
 struct message messages[MESSAGE_NUMBER];
-    
+
 
 void message_pool_init() {
     uint8_t i;
@@ -22,10 +22,15 @@ void message_send(uint8_t msg, uint8_t delay) {
         if(time > messages[msg].time) {
                messages[msg].flag = 1;
                messages[msg].time = time+delay;
-        } 
+        }
     }
 }
-
+void message_resend(uint8_t msg, uint8_t delay) {
+    if(msg < MESSAGE_NUMBER) {
+        messages[msg].flag = 1;
+        messages[msg].time = time+delay;
+    }
+}
 uint8_t message_resv() {
     uint8_t i;
     for(i = 0; i< MESSAGE_NUMBER; i++) {

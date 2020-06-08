@@ -60,7 +60,6 @@ void buttons_send_status() {
         BUTTON_DOWN_GPIO_PIN |
         BUTTON_MODE_GPIO_PIN)) {
         message_send(MESSAGE_BUTTONS_RELEASED, BUTTON_DELAY_MS);
-
     }
 
 }

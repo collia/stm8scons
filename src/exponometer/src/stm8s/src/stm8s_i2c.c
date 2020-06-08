@@ -91,7 +91,6 @@ void I2C_Init(uint32_t OutputClockFrequencyHz, uint16_t OwnAddress,
   assert_param(IS_I2C_INPUT_CLOCK_FREQ_OK(InputClockFrequencyMHz));
   assert_param(IS_I2C_OUTPUT_CLOCK_FREQ_OK(OutputClockFrequencyHz));
 
-
   /*------------------------- I2C FREQ Configuration ------------------------*/
   /* Clear frequency bits */
   I2C->FREQR &= (uint8_t)(~I2C_FREQR_FREQ);
@@ -105,7 +104,7 @@ void I2C_Init(uint32_t OutputClockFrequencyHz, uint16_t OwnAddress,
   /* Clear CCRH & CCRL */
   I2C->CCRH &= (uint8_t)(~(I2C_CCRH_FS | I2C_CCRH_DUTY | I2C_CCRH_CCR));
   I2C->CCRL &= (uint8_t)(~I2C_CCRL_CCR);
-
+#ifdef DEBUG
   /* Detect Fast or Standard mode depending on the Output clock frequency selected */
   if (OutputClockFrequencyHz > I2C_MAX_STANDARD_FREQ) /* FAST MODE */
   {
@@ -140,6 +139,7 @@ void I2C_Init(uint32_t OutputClockFrequencyHz, uint16_t OwnAddress,
 
   }
   else /* STANDARD MODE */
+#endif
   {
 
     /* Calculate standard mode speed */
@@ -280,32 +280,6 @@ void I2C_AcknowledgeConfig(I2C_Ack_TypeDef Ack)
       /* Configure (N)ACK on next byte */
       I2C->CR2 |= I2C_CR2_POS;
     }
-  }
-}
-
-/**
-  * @brief  Enables or disables the specified I2C interrupt.
-  * @param  I2C_IT : Name of the interrupt to enable or disable.
-  *         This parameter can be any of the  @ref I2C_IT_TypeDef enumeration.
-  * @param  NewState : State of the interrupt to apply.
-  *         This parameter can be any of the @ref FunctionalState enumeration.
-  * @retval None
-  */
-void I2C_ITConfig(I2C_IT_TypeDef I2C_IT, FunctionalState NewState)
-{
-  /* Check functions parameters */
-  assert_param(IS_I2C_INTERRUPT_OK(I2C_IT));
-  assert_param(IS_FUNCTIONALSTATE_OK(NewState));
-
-  if (NewState != DISABLE)
-  {
-    /* Enable the selected I2C interrupts */
-    I2C->ITR |= (uint8_t)I2C_IT;
-  }
-  else /* NewState == DISABLE */
-  {
-    /* Disable the selected I2C interrupts */
-    I2C->ITR &= (uint8_t)(~(uint8_t)I2C_IT);
   }
 }
 
@@ -503,43 +477,6 @@ ErrorStatus I2C_CheckEvent(I2C_Event_TypeDef I2C_Event)
 
 /**
  *
- *  2) Advanced state monitoring
- *******************************************************************************
- */
-/**
-  * @brief  Returns the last I2C Event.
-  *
-  * @note: For detailed description of Events, please refer to section
-  *    I2C_Events in stm8s_i2c.h file.
-  *
-  * @retval The last event
-  *   This parameter can be any of the  @ref I2C_Event_TypeDef enumeration.
-  */
-I2C_Event_TypeDef I2C_GetLastEvent(void)
-{
-  __IO uint16_t lastevent = 0;
-  uint16_t flag1 = 0;
-  uint16_t flag2 = 0;
-
-  if ((I2C->SR2 & I2C_SR2_AF) != 0x00)
-  {
-    lastevent = I2C_EVENT_SLAVE_ACK_FAILURE;
-  }
-  else
-  {
-    /* Read the I2C status register */
-    flag1 = I2C->SR1;
-    flag2 = I2C->SR3;
-
-    /* Get the last event value from I2C status register */
-    lastevent = ((uint16_t)((uint16_t)flag2 << 8) | (uint16_t)flag1);
-  }
-  /* Return status */
-  return (I2C_Event_TypeDef)lastevent;
-}
-
-/**
- *
  *  3) Flag-based state monitoring
  *******************************************************************************
  */
@@ -613,171 +550,5 @@ FlagStatus I2C_GetFlagStatus(I2C_Flag_TypeDef I2C_Flag)
   /* Return the flag status */
   return bitstatus;
 }
-
-/**
-  * @brief  Clear flags
-  * @param  I2C_FLAG : Specifies the flag to clear
-  *   This parameter can be any combination of the following values:
-  *                       - I2C_FLAG_WAKEUPFROMHALT: Wakeup from Halt
-  *                       - I2C_FLAG_OVERRUNUNDERRUN: Overrun/Underrun flag (Slave mode)
-  *                       - I2C_FLAG_ACKNOWLEDGEFAILURE: Acknowledge failure flag
-  *                       - I2C_FLAG_ARBITRATIONLOSS: Arbitration lost flag (Master mode)
-  *                       - I2C_FLAG_BUSERROR: Bus error flag.
-  * @note Notes:
-  *                       - STOPF (STOP detection) is cleared by software
-  *                         sequence: a read operation to I2C_SR1 register
-  *                         (I2C_GetFlagStatus()) followed by a write operation
-  *                         to I2C_CR2 register.
-  *                       - ADD10 (10-bit header sent) is cleared by software
-  *                         sequence: a read operation to I2C_SR1
-  *                         (I2C_GetFlagStatus()) followed by writing the
-  *                         second byte of the address in DR register.
-  *                       - BTF (Byte Transfer Finished) is cleared by software
-  *                         sequence: a read operation to I2C_SR1 register
-  *                         (I2C_GetFlagStatus()) followed by a read/write to
-  *                         I2C_DR register (I2C_SendData()).
-  *                       - ADDR (Address sent) is cleared by software sequence:
-  *                         a read operation to I2C_SR1 register
-  *                         (I2C_GetFlagStatus()) followed by a read operation to
-  *                         I2C_SR3 register ((void)(I2C->SR3)).
-  *                       - SB (Start Bit) is cleared software sequence: a read
-  *                         operation to I2C_SR1 register (I2C_GetFlagStatus())
-  *                         followed by a write operation to I2C_DR register
-  *                         (I2C_SendData()).
-  * @retval None
-  */
-void I2C_ClearFlag(I2C_Flag_TypeDef I2C_FLAG)
-{
-  uint16_t flagpos = 0;
-  /* Check the parameters */
-  assert_param(IS_I2C_CLEAR_FLAG_OK(I2C_FLAG));
-
-  /* Get the I2C flag position */
-  flagpos = (uint16_t)I2C_FLAG & FLAG_Mask;
-  /* Clear the selected I2C flag */
-  I2C->SR2 = (uint8_t)((uint16_t)(~flagpos));
-}
-
-/**
-  * @brief  Checks whether the specified I2C interrupt has occurred or not.
-  * @param  I2C_ITPendingBit: specifies the interrupt source to check.
-  *            This parameter can be one of the following values:
-  *               - I2C_ITPENDINGBIT_WAKEUPFROMHALT: Wakeup from Halt
-  *               - I2C_ITPENDINGBIT_OVERRUNUNDERRUN: Overrun/Underrun flag (Slave mode)
-  *               - I2C_ITPENDINGBIT_ACKNOWLEDGEFAILURE: Acknowledge failure flag
-  *               - I2C_ITPENDINGBIT_ARBITRATIONLOSS: Arbitration lost flag (Master mode)
-  *               - I2C_ITPENDINGBIT_BUSERROR: Bus error flag
-  *               - I2C_ITPENDINGBIT_TXEMPTY: Data register empty flag (Transmitter)
-  *               - I2C_ITPENDINGBIT_RXNOTEMPTY: Data register not empty (Receiver) flag
-  *               - I2C_ITPENDINGBIT_STOPDETECTION: Stop detection flag (Slave mode)
-  *               - I2C_ITPENDINGBIT_HEADERSENT: 10-bit header sent flag (Master mode)
-  *               - I2C_ITPENDINGBIT_TRANSFERFINISHED: Byte transfer finished flag
-  *               - I2C_ITPENDINGBIT_ADDRESSSENTMATCHED: Address sent flag (Master mode) “ADSL”
-  *                              Address matched flag (Slave mode)“ENDAD”
-  *               - I2C_ITPENDINGBIT_STARTDETECTION: Start bit flag (Master mode)
-  * @retval The new state of I2C_ITPendingBit
-  *   This parameter can be any of the @ref ITStatus enumeration.
-  */
-ITStatus I2C_GetITStatus(I2C_ITPendingBit_TypeDef I2C_ITPendingBit)
-{
-  ITStatus bitstatus = RESET;
-  __IO uint8_t enablestatus = 0;
-  uint16_t tempregister = 0;
-
-    /* Check the parameters */
-    assert_param(IS_I2C_ITPENDINGBIT_OK(I2C_ITPendingBit));
-
-  tempregister = (uint8_t)( ((uint16_t)((uint16_t)I2C_ITPendingBit & ITEN_Mask)) >> 8);
-
-  /* Check if the interrupt source is enabled or not */
-  enablestatus = (uint8_t)(I2C->ITR & ( uint8_t)tempregister);
-
-  if ((uint16_t)((uint16_t)I2C_ITPendingBit & REGISTER_Mask) == REGISTER_SR1_Index)
-  {
-    /* Check the status of the specified I2C flag */
-    if (((I2C->SR1 & (uint8_t)I2C_ITPendingBit) != RESET) && enablestatus)
-    {
-      /* I2C_IT is set */
-      bitstatus = SET;
-    }
-    else
-    {
-      /* I2C_IT is reset */
-      bitstatus = RESET;
-    }
-  }
-  else
-  {
-    /* Check the status of the specified I2C flag */
-    if (((I2C->SR2 & (uint8_t)I2C_ITPendingBit) != RESET) && enablestatus)
-    {
-      /* I2C_IT is set */
-      bitstatus = SET;
-    }
-    else
-    {
-      /* I2C_IT is reset */
-      bitstatus = RESET;
-    }
-  }
-  /* Return the I2C_IT status */
-  return  bitstatus;
-}
-
-/**
-  * @brief  Clear IT pending bit
-  * @param  I2C_ITPendingBit : specifies the interrupt pending bit to clear.
-  *            This parameter can be any combination of the following values:
-  *                 - I2C_ITPENDINGBIT_WAKEUPFROMHALT: Wakeup from Halt
-  *                 - I2C_ITPENDINGBIT_OVERRUNUNDERRUN: Overrun/Underrun interrupt (Slave mode)
-  *                 - I2C_ITPENDINGBIT_ACKNOWLEDGEFAILURE: Acknowledge failure interrupt
-  *                 - I2C_ITPENDINGBIT_ARBITRATIONLOSS: Arbitration lost interrupt (Master mode)
-  *                 - I2C_ITPENDINGBIT_BUSERROR: Bus error interrupt
-  *
-  *             Notes:
-  *                  - STOPF (STOP detection) is cleared by software
-  *                    sequence: a read operation to I2C_SR1 register
-  *                    (I2C_GetITStatus()) followed by a write operation to
-  *                    I2C_CR2 register (I2C_AcknowledgeConfig() to configure
-  *                    the I2C peripheral Acknowledge).
-  *                  - ADD10 (10-bit header sent) is cleared by software
-  *                    sequence: a read operation to I2C_SR1
-  *                    (I2C_GetITStatus()) followed by writing the second
-  *                    byte of the address in I2C_DR register.
-  *                  - BTF (Byte Transfer Finished) is cleared by software
-  *                    sequence: a read operation to I2C_SR1 register
-  *                    (I2C_GetITStatus()) followed by a read/write to
-  *                    I2C_DR register (I2C_SendData()).
-  *                  - ADDR (Address sent) is cleared by software sequence:
-  *                    a read operation to I2C_SR1 register (I2C_GetITStatus())
-  *                    followed by a read operation to I2C_SR3 register
-  *                    ((void)(I2C->SR3)).
-  *                  - SB (Start Bit) is cleared by software sequence: a
-  *                    read operation to I2C_SR1 register (I2C_GetITStatus())
-  *                    followed by a write operation to I2C_DR register
-  *                    (I2C_SendData()).
-  * @retval None
-  */
-void I2C_ClearITPendingBit(I2C_ITPendingBit_TypeDef I2C_ITPendingBit)
-{
-  uint16_t flagpos = 0;
-
-  /* Check the parameters */
-  assert_param(IS_I2C_CLEAR_ITPENDINGBIT_OK(I2C_ITPendingBit));
-
-  /* Get the I2C flag position */
-  flagpos = (uint16_t)I2C_ITPendingBit & FLAG_Mask;
-
-  /* Clear the selected I2C flag */
-  I2C->SR2 = (uint8_t)((uint16_t)~flagpos);
-}
-
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

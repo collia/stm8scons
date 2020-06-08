@@ -6,8 +6,9 @@
 #define MESSAGE_DOWN_BUTTON        (2)
 #define MESSAGE_BUTTONS_RELEASED   (3)
 #define MESSAGE_BUTTONS_IRQ        (4)
+#define MESSAGE_SLEEP_MODE         (5)
 
-#define MESSAGE_NUMBER             (5)
+#define MESSAGE_NUMBER             (6)
 
 
 void message_pool_init();
