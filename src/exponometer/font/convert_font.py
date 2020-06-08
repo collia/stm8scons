@@ -3,16 +3,49 @@
 import sys, string, unicodedata
 from PIL import ImageFont, ImageDraw, Image
 
-def get_char_pixels(fontname, c, size):
+def get_char_pixels_from_char(fontname, c, size):
     #image = Image.new('RGBA', (size, size), (255,255,255,0))
     image = Image.new('RGB', (size, size), (0,0,0))
     draw = ImageDraw.Draw(image)
     # use a truetype font
     font = ImageFont.truetype(fontname, int(size*1.5))
+    #font = ImageFont.truetype(fontname, int(size))
     draw.text((0, -(int(size*0.3))), c, font=font)
+    #draw.text((0, -(int(size*0))), c, font=font)
 
     #image.show()
     return image.load();
+
+def get_char_pixels_from_picture(c):
+    image = Image.open(c[1]).convert('RGB')
+    return image.load();
+
+def get_char_pixels(fontname, c, size):
+    if isinstance(c, str):
+        return get_char_pixels_from_char(fontname, c, size)
+    elif isinstance(c, tuple):
+        return get_char_pixels_from_picture(c)
+
+def create_char_file(fontname, symbols):
+    for table in symbols:
+        name = table[0]
+        size = table[1]
+        chars = table[2]
+
+        image = Image.new('RGB', (size*len(chars), size), (0,0,0))
+        draw = ImageDraw.Draw(image)
+        font = ImageFont.truetype(fontname, int(size*1.5))
+        #font = ImageFont.truetype(fontname, int(size*1.1))
+
+        for count, ch in enumerate(chars):
+            if isinstance(ch, str):
+                draw.text((count*size, -(int(size*0.3))), ch, font=font)
+                #draw.text((count*(size), -(int(size*0.1))), ch, font=font)
+            elif isinstance(ch, tuple):
+                sym_im = Image.open(ch[1]).convert("RGB")
+                image.paste(sym_im, (size*count, 0))
+        image.save("{}.png".format(name), "PNG")
+
 
 def generate_header_head():
     return "#ifndef _FONT_H_ \n\
@@ -35,10 +68,13 @@ def generate_font_size_defines(name, size):
 ".format(name.upper(), size, name.upper(), size)
 
 def get_char_name(ch):
-    return unicodedata.name(ch).replace('-','_').replace(' ', '_')
+    if isinstance(ch, str):
+       return unicodedata.name(ch).replace('-','_').replace(' ', '_')
+    elif isinstance(ch, tuple):
+        return ch[0].upper()
 
-def generate_c_array(char, size, pixels):
-    res = " // {}\n".format(char)
+def generate_c_array( size, pixels):
+    res = "\n"
     for y_row in range(0, int(size/8)):
         for x in range(0, int(size)):
             v = 0
@@ -73,7 +109,7 @@ def generate_font_files(fontname, symbols):
                  name.lower(),
                  get_char_name(ch),
                  name.upper(), name.upper())
-            char_table_definition += generate_c_array(ch, size, get_char_pixels(fontname, ch, size))
+            char_table_definition += generate_c_array(size, get_char_pixels(fontname, ch, size))
             char_table_definition += "};\n"
 
             char_table_enum += "\t{}_FONT_{},\n".format(
@@ -101,21 +137,19 @@ if len(sys.argv) < 2:
     print("no enought param, needed 2 - <file.ttf> <size>")
     exit(1)
 
-#char_table =  [("digits", string.digits),
-#               ("uppercase", string.ascii_uppercase),
-#               ("lowercase", string.ascii_lowercase)]
-#char_table =  [("digits", string.digits),
-#               ("letters", string.ascii_uppercase)]
-#char_table =  [("letters", ['A'])]
-#char_table =  [("fractions", ['\u00BD', '\u00BC','\u215B'])]
-#char_table =  [("fractions", ['\u00'])]
 
-big_symbol_table = ("big", 16,  "ACLEXPTIMU"+" ")
-small_symbol_table = ("small", 8,  string.digits+string.ascii_uppercase+'-+_ ')
-#big_symbol_table = ("big", 16, "A")
-#small_symbol_table = ("big", 8, "a")
+big_symbol_table = ("big", 16,  string.digits+"luxevmsiof"+"/-. ")
+small_symbol_table = ("small", 8,  string.digits+"isoexpfm"+'/-. ')
+spec_symbol_table = ("special", 16, [
+    ("bat_empty", "symbols/battery_empty.png"),
+    ("bat_half", "symbols/battery_half.png"),
+    ("bat_full", "symbols/battery_full.png"),
+    ("bat_chrg", "symbols/battery_chrg.png")
+])
 
-files = generate_font_files(sys.argv[1], [big_symbol_table, small_symbol_table])
+files = generate_font_files(sys.argv[1], [big_symbol_table,
+                                          small_symbol_table,
+                                          spec_symbol_table])
 
 for f in files:
     print(f)
@@ -124,3 +158,7 @@ with open("font.h", 'w') as f:
     f.write(files[0])
 with open("font.c", 'w') as f:
     f.write(files[1])
+
+create_char_file(sys.argv[1], [big_symbol_table,
+                               small_symbol_table,
+                               spec_symbol_table])
