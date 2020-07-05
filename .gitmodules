@@ -1,0 +1,3 @@
+[submodule "src/exponometer"]
+	path = src/exponometer
+	url = https://github.com/collia/exponometer.git
