@@ -37,7 +37,8 @@ env.Append(LINKFLAGS = [
 env.Append(CPPDEFINES = [
     stm_device,
     "SSD1306_128_64",
-    #"DEBUG"
+    #"DEBUG",
+    "FEATURES_EXPONOMETER"
 ])
 
 

@@ -1,3 +1,15 @@
+/**
+ * @file    main.c
+ * @author  Nikolay
+ * @license MIT
+ * @date    2020-07-05
+ * @brief   Expometer main routine
+ *
+ * File contains main function, general logic 
+ * for exponometer and interface routine
+ *
+ */
+
 #include "stm8s.h"
 #include "i2c.h"
 #include "debug.h"
@@ -20,18 +32,21 @@ static void continius_mode();
 static void init_calibration(void);
 static void init_exposure(void);
 static void init_delay(void);
+static void init_config(void);
 
 static void run_calibration(uint8_t msg);
 static void run_exposure(uint8_t msg);
 static void run_delay(uint8_t msg);
+static void run_config(uint8_t msg);
 
-static void print_exposure(fonts font, int8_t ev, uint8_t f_idx, uint8_t column, uint8_t row);
+static void print_exposure(fonts font, int16_t ev, uint8_t f_idx, uint8_t column, uint8_t row);
 static void print_exposure_error(fonts font, uint8_t column, uint8_t row);
 
 
 static uint8_t current_f_idx = 0;
-static int8_t min_ev = EV_INCORECT_VAL;
-static int8_t max_ev = EV_INCORECT_VAL;
+static int16_t min_ev = EV_INCORECT_VAL;
+static int16_t max_ev = EV_INCORECT_VAL;
+static iso_log_scale_t iso = ISO_BASE;
 //Strings
 const unsigned char exp_line[] = {
     BIG_FONT_LATIN_SMALL_LETTER_E,
@@ -45,11 +60,11 @@ const unsigned char lux_line[] = {
     BIG_FONT_LATIN_SMALL_LETTER_X,
 };
 
-
 const unsigned char iso_big_line[] = {
     BIG_FONT_LATIN_SMALL_LETTER_I,
     BIG_FONT_LATIN_SMALL_LETTER_S,
     BIG_FONT_LATIN_SMALL_LETTER_O,
+    BIG_FONT_SPACE,
 };
 
 const unsigned char error_3_line[] = {
@@ -87,16 +102,11 @@ const unsigned char iso_line[] = {
     SMALL_FONT_LATIN_SMALL_LETTER_S,
     SMALL_FONT_LATIN_SMALL_LETTER_O,
     SMALL_FONT_SPACE,
-    SMALL_FONT_DIGIT_TWO,
-    SMALL_FONT_DIGIT_ZERO,
-    SMALL_FONT_DIGIT_ZERO,
 };
-const unsigned char exp_correct_line[] = {
+const unsigned char exposure_line[] = {
     SMALL_FONT_LATIN_SMALL_LETTER_E,
-    SMALL_FONT_LATIN_SMALL_LETTER_X,
-    SMALL_FONT_LATIN_SMALL_LETTER_P,
+    SMALL_FONT_LATIN_SMALL_LETTER_V,
     SMALL_FONT_SPACE,
-    SMALL_FONT_DIGIT_ZERO,
 };
 
 const unsigned char exp_fraction_line[] = {
@@ -136,19 +146,16 @@ const unsigned char s_empty_3_line[] = {
     SMALL_FONT_SPACE,
     SMALL_FONT_SPACE,
 };
-/*
-const unsigned char dot_line[] = {
-    BIG_FONT_FULL_STOP,
-};
-const unsigned char s_dot_line[] = {
-    SMALL_FONT_FULL_STOP,
-};
-*/
+
 typedef enum {
     MODE_CALIBRATION,
+#ifdef FEATURES_EXPONOMETER
     MODE_MEASHURE_EXPOSURE,
     MODE_CONFIG,
+#endif
+#ifdef FEATURES_SPEED
     MODE_MEASHURE_DELAY,
+#endif
     MODE_MAX,
 } device_mode;
 
@@ -157,15 +164,23 @@ typedef void (*run_hadler)(uint8_t msg);
 
 static const init_hadler init_handlers[MODE_MAX] = {
     init_calibration,
+#ifdef FEATURES_EXPONOMETER
     init_exposure,
     init_config,
+#endif
+#ifdef FEATURES_SPEED
     init_delay
+#endif
 };
 static const run_hadler run_handlers[MODE_MAX] = {
     run_calibration,
+#ifdef FEATURES_EXPONOMETER
     run_exposure,
     run_config,
+#endif
+#ifdef FEATURES_SPEED
     run_delay
+#endif
 };
 
 int main()
@@ -173,6 +188,7 @@ int main()
     device_mode mode = MODE_MEASHURE_EXPOSURE;
     uint8_t msg, prev_btn_msg = MESSAGE_BUTTONS_RELEASED;
     bool is_long_pressed;
+    bool is_sleep = FALSE;
 
     debug_init();
     clock_setup();
@@ -208,23 +224,20 @@ int main()
                     init_handlers[mode]();
                 }
                 break;
-                /*
-            case MESSAGE_UP_BUTTON:
-                //term_print("US", 4, 0);
-                break;
-            case MESSAGE_DOWN_BUTTON:
-                //term_print("DS", 4, 0);
-                break;
-                */
             }
         } else if(msg == MESSAGE_MODE_BUTTON ||
                   msg == MESSAGE_UP_BUTTON ||
                   msg == MESSAGE_DOWN_BUTTON) {
             prev_btn_msg  = msg;
             ssd1306_display_on();
+            is_sleep = FALSE;
+            message_resend(MESSAGE_SLEEP_MODE, DEVICE_SLEEP_TIMEOUT_MS);
         } else if(msg == MESSAGE_BUTTONS_IRQ) {
             buttons_send_status();
             button_set_irq_en(1);
+        } else if(msg == MESSAGE_SLEEP_MODE) {
+            is_sleep = TRUE;
+            ssd1306_display_off();
         }
         if(msg == MESSAGE_BUTTONS_RELEASED) {
             run_handlers[mode](prev_btn_msg);
@@ -263,11 +276,15 @@ static void init_calibration(void) {
     term_print(BIG_FONT, exp_line, sizeof(exp_line), 0, 3);
     term_print(BIG_FONT, error_2_line, sizeof(error_2_line), 4, 3);
 }
+#ifdef FEATURES_EXPONOMETER
 static void init_exposure(void) {
 
     term_print(BIG_FONT, empty_3_line, sizeof(empty_3_line), 0, 0);
     term_print(SMALL_FONT, iso_line, sizeof(iso_line), 0, 0);
-    term_print(SMALL_FONT, exp_correct_line, sizeof(exp_correct_line), 0, 1);
+    term_print_uint(SMALL_FONT,
+                    iso_from_log_to_arith(iso),
+                    4, 0);
+    term_print(SMALL_FONT, exposure_line, sizeof(exposure_line), 0, 1);
 
     term_print(BIG_FONT, empty_3_line, sizeof(empty_3_line), 4, 2);
 
@@ -282,16 +299,28 @@ static void init_exposure(void) {
 
 }
 static void init_config(void) {
+    uint8_t rc;
     term_print(BIG_FONT, empty_4_line, sizeof(empty_4_line), 0, 0);
     term_print(BIG_FONT, empty_3_line, sizeof(empty_3_line), 4, 0);
 
     term_print(BIG_FONT, iso_big_line, sizeof(iso_big_line), 0, 1);
-    term_print(BIG_FONT, exp_line, sizeof(exp_line), 0, 2);
+
+    rc = term_print_uint(BIG_FONT,
+                    iso_from_log_to_arith(iso),
+                    sizeof(iso_big_line), 1);
+
+    term_print(BIG_FONT,
+               empty_4_line,
+               sizeof(empty_4_line),
+               rc + sizeof(iso_big_line), 1);
+    term_print(BIG_FONT, empty_4_line, sizeof(empty_4_line), 0, 2);
+    term_print(BIG_FONT, empty_4_line, sizeof(empty_4_line), 4, 2);
     term_print(BIG_FONT, empty_4_line, sizeof(empty_4_line), 0, 3);
     term_print(BIG_FONT, empty_4_line, sizeof(empty_4_line), 4, 3);
-
+    
 }
-
+#endif
+#ifdef FEATURES_SPEED
 static void init_delay(void) {
     term_print(BIG_FONT, error_3_line, sizeof(error_3_line), 0, 1);
     term_print(BIG_FONT, empty_4_line, sizeof(empty_4_line), 3, 1);
@@ -299,7 +328,7 @@ static void init_delay(void) {
     term_print(BIG_FONT, error_3_line, sizeof(error_3_line), 0, 2);
     term_print(BIG_FONT, empty_3_line, sizeof(error_3_line), 5, 2);
 }
-
+#endif
 
 static void show_status(void) {
     static int i = 0;
@@ -362,13 +391,14 @@ static void run_calibration(uint8_t msg) {
 
     }
 }
+#ifdef FEATURES_EXPONOMETER
 static void run_exposure(uint8_t msg) {
     bool update = FALSE;
-    static int8_t ev=0;
+    static int16_t ev=0;
 
     switch(msg) {
     case MESSAGE_MODE_BUTTON:
-        ev  = lux_to_EV(max44009_get_lux());
+        ev  = lux_to_EV(max44009_get_lux(), iso);
         update = TRUE;
         break;
     case MESSAGE_UP_BUTTON:
@@ -400,63 +430,102 @@ static void run_exposure(uint8_t msg) {
         }
     }
 }
+#endif
+#ifdef FEATURES_SPEED
 static void run_delay(uint8_t msg) {
 }
+#endif
+#ifdef FEATURES_EXPONOMETER
 static void run_config(uint8_t msg) {
+    bool update = FALSE;
+    static int16_t ev=0;
+    uint8_t rc;
+
+    switch(msg) {
+    case MESSAGE_UP_BUTTON:
+        if(iso == ISO_MAX) {
+            iso=ISO_MIN;
+        } else {
+            iso++;
+        }
+        update = TRUE;
+        break;
+    case MESSAGE_DOWN_BUTTON:
+        if(iso == ISO_MIN) {
+            iso=ISO_MAX;
+        } else {
+            iso--;
+        }
+        update = TRUE;
+        break;
+    }
+    if(update) {
+            rc = term_print_uint(BIG_FONT,
+                    iso_from_log_to_arith(iso),
+                    sizeof(iso_big_line), 1);
+
+            term_print(BIG_FONT,
+                       empty_4_line,
+                       sizeof(empty_4_line),
+                       rc + sizeof(iso_big_line), 1);
+
+    }
+
 }
+#endif
 
-
-static void print_exposure(fonts font, int8_t ev, uint8_t f_idx, uint8_t column, uint8_t row) {
+static void print_exposure(fonts font, int16_t ev, uint8_t f_idx, uint8_t column, uint8_t row) {
     const unsigned char *apt_line;
     const unsigned char *e_line;
     const unsigned char *e_minutes_line;
     const unsigned char *spaces;
-    unsigned char dot;
-    unsigned char zero;
+    //unsigned char dot;
+    //unsigned char zero;
     uint16_t speed;
     uint8_t apt;
+    uint8_t rc;
 
     if(font == BIG_FONT) {
         e_line = exp_fraction_line;
         apt_line = f_line;
         e_minutes_line = minutes_line;
         spaces = empty_3_line;
-        dot = BIG_FONT_FULL_STOP;
-        zero = BIG_FONT_DIGIT_ZERO;
     } else {
         e_line = s_exp_fraction_line;
         apt_line = s_f_line;
         e_minutes_line = s_minutes_line;
         spaces = s_empty_3_line;
-        dot = SMALL_FONT_FULL_STOP;
-        zero = SMALL_FONT_DIGIT_ZERO;
     }
-    lux_to_EV_pair(ev, f_idx,
+    term_print_fixed_point(SMALL_FONT,
+                           ev,
+                           3,1,TRUE);
+    ev_to_exp_pair(ev, f_idx,
                    &speed,
                    &apt);
     if((speed & (~(EXP_SPEED_MINUTES|EXP_SPEED_SECONDS))) == 0) {
         print_exposure_error(font, column, row);
     } else {
         if(speed & EXP_SPEED_MINUTES) {
-            term_print_int(font,
+            rc = term_print_uint(font,
                        (speed & (~EXP_SPEED_MINUTES)),
-                       column, row, 4);
+                       column, row);
             term_print(font, e_minutes_line, sizeof(minutes_line),
-                       column+4, row);
+                       column+rc, row);
             term_print(font, spaces, sizeof(empty_3_line),
-                       column+5, row);
+                       column+rc+sizeof(minutes_line), row);
 
         } else if (speed & EXP_SPEED_SECONDS) {
-            term_print_int(font,
+            rc = term_print_uint(font,
                            (speed & (~EXP_SPEED_SECONDS)),
-                           column, row, 2);
-            term_print(font, spaces, sizeof(empty_3_line), column+2, row);
-            term_print(font, spaces, sizeof(empty_3_line), column+2+3, row);
+                           column, row);
+            term_print(font, spaces, sizeof(empty_3_line), column+rc, row);
+            term_print(font, spaces, sizeof(empty_3_line), column+rc+3, row);
         } else {
             term_print(font, e_line, sizeof(exp_fraction_line), column, row);
-            term_print_int(font,
-                       speed,
-                       column+2, row, 4);
+            rc = term_print_uint(font,
+                                 speed,
+                                 column+2, row);
+            term_print(font, spaces, sizeof(empty_3_line), column+2+rc, row);
         }
 
 
@@ -469,6 +538,7 @@ static void print_exposure(fonts font, int8_t ev, uint8_t f_idx, uint8_t column,
             //term_print_int(font,
             //               (apt & (~F_NUM_POINT))%10,
             //               column+3, row+1, 1);
+            /*
             term_print_char(font, (apt & (~F_NUM_POINT))/10 + zero,
                             column+1, row+1);
             term_print_char(font, dot,
@@ -476,11 +546,16 @@ static void print_exposure(fonts font, int8_t ev, uint8_t f_idx, uint8_t column,
             term_print_char(font, (apt & (~F_NUM_POINT))%10 + zero,
                             column+3, row+1);
             term_print(font, spaces, sizeof(empty_3_line), column+1+3, row+1);
+            */
+            term_print_fixed_point(font, apt & (~F_NUM_POINT),
+                                   column+1, row+1,FALSE );
+            term_print(font, spaces, sizeof(empty_3_line), column+1+3, row+1);
+
         } else {
-            term_print_int(font,
+            rc = term_print_uint(font,
                            apt & (~F_NUM_POINT),
-                           column+1, row+1, 2);
-            term_print(font, spaces, sizeof(empty_3_line), column+1+2, row+1);
+                           column+1, row+1);
+            term_print(font, spaces, sizeof(empty_3_line), column+1+rc, row+1);
         }
     }
 }
