@@ -31,38 +31,77 @@ void term_print_char(fonts f, unsigned char ch, uint8_t column, uint8_t row) {
     }
 }
 
-void term_print(fonts f, unsigned char str[], uint8_t strlen, uint8_t column, uint8_t row) {
+void term_print(fonts f, const unsigned char str[], uint8_t strlen, uint8_t column, uint8_t row) {
     uint8_t i;
     for(i = 0; i < strlen; i++) {
             term_print_char(f, str[i], i+column, row);
     }
 }
 
-void term_print_int(fonts f, int16_t val,  uint8_t column, uint8_t row, uint8_t len) {
+uint8_t  term_print_uint(fonts f, uint16_t val,  uint8_t column, uint8_t row) {
     #define INT_STR_MAX_LEN 4
     unsigned char buffer[INT_STR_MAX_LEN+1];
     uint8_t i;
     uint8_t zero;
-    uint8_t offset = 0;
     if(f == BIG_FONT) {
         zero = BIG_FONT_DIGIT_ZERO;
-        buffer[0] = BIG_FONT_HYPHEN_MINUS;
-    } else if (f == SMALL_FONT) {
+    } else {
         zero = SMALL_FONT_DIGIT_ZERO;
-        buffer[0] = SMALL_FONT_HYPHEN_MINUS;
     }
-    if(val < 0) {
-        offset = 1;
-        len--;
-    }
-    buffer[len] = 0;
-    for(i = 0; i < len; i++) {
-        if(val) {
-            buffer[len-1-i + offset] = val % 10 + zero;
-            val /= 10;
-        } else {
-            buffer[len-1-i + offset] = zero;
+    if(val == 0){
+        i=1;
+        buffer[INT_STR_MAX_LEN-i+1] = zero;
+    } else {
+        for(i = 0; i <= INT_STR_MAX_LEN; i++) {
+            //printf("[%d]=%d ",INT_STR_MAX_LEN-i, val%10);
+            if(val) {
+                buffer[INT_STR_MAX_LEN-i] = val % 10 + zero;
+                val /= 10;
+            } else {
+                buffer[INT_STR_MAX_LEN-i] = zero;
+                break;
+            }
         }
     }
-    term_print(f, buffer, len, column, row);
+
+    //printf("\n i = %d\n", i);
+    term_print(f, &buffer[INT_STR_MAX_LEN-i+1], i, column, row);
+    return i;
+}
+
+uint8_t term_print_fixed_point(fonts f, int16_t val,  uint8_t column, uint8_t row, bool sign) {
+    unsigned char dot;
+    unsigned char zero;
+    unsigned char plus;
+    unsigned char minus;
+    uint8_t rc = 0;
+    if(f == BIG_FONT) {
+        dot = BIG_FONT_FULL_STOP;
+        zero = BIG_FONT_DIGIT_ZERO;
+        plus = BIG_FONT_PLUS_SIGN;
+        minus = BIG_FONT_HYPHEN_MINUS;
+    } else {
+        dot = SMALL_FONT_FULL_STOP;
+        zero = SMALL_FONT_DIGIT_ZERO;
+        plus = SMALL_FONT_PLUS_SIGN;
+        minus = SMALL_FONT_HYPHEN_MINUS;
+    }
+    if(sign) {
+        if(val < 0) {
+            val = -val;
+            term_print_char(f, minus,
+                            column, row);
+        } else {
+            term_print_char(f, plus,
+                            column, row);
+        }
+        rc++;
+    }
+    rc += term_print_uint(f, val/10, column+rc, row);
+    term_print_char(f, dot,
+                    column+rc, row);
+    rc++;
+    rc+=term_print_uint(f, val%10,
+                    column+rc, row);
+    return (rc);
 }
