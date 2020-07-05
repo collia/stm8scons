@@ -1,3 +1,13 @@
+/**
+ * @file    ssd1306.c
+ * @author  Nikolay
+ * @license MIT
+ * @date    2020-07-05
+ * @brief   SSD1306 screen driver
+ *
+ * Now is supported only 128x64 screen
+ */
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -107,30 +117,78 @@ static const uint8_t ssd1306_init_array [] = {
     SSD1306_DISPLAYALLON_RESUME,         // 0xA4
     SSD1306_NORMALDISPLAY,               // 0xA6
     SSD1306_DEACTIVATE_SCROLL,
-    SSD1306_DISPLAYON
+    //SSD1306_DISPLAYON
 };
 
-
+#ifdef SSD1306_GRAPH_MODE
 static uint8_t video_buffer[BUFFER_WIDTH * BUFFER_HEIGHT/8];
-
+#endif
 static void ssd1306_display_buffer(uint8_t x_offset, uint8_t y_offset,
                                    uint8_t width, uint8_t height,
-                                   uint8_t *buf, uint8_t len);
+                                   const uint8_t *buf, uint8_t len);
+
+static bool display_on = FALSE;
+
+/**
+ * @brief         screen initialization
+ * @details       Send in screen driver array with initialization
+ *                and memset by 0 screen area
+ */
 void ssd1306_init() {
-
+#ifdef SSD1306_GRAPH_MODE
     ssd1306_clearDisplayBuffer();
-
+#endif
     i2c_write_reg_array(SSD1306_I2C_ADDR,
                         SSD1306_COMMAND,
                         ssd1306_init_array,
                         sizeof(ssd1306_init_array));
 
     ssd1306_clear_display();
+    ssd1306_display_on();
 
 }
+/**
+ * @brief         if display is off enable it, do nothing otherwise
+ * @details       function uses global driver state about display state
+ */
+void ssd1306_display_on() {
+    static const uint8_t ssd1306_on_array [] = {
+        SSD1306_DISPLAYON
+    };
 
+    if(!display_on) {
+        i2c_write_reg_array(SSD1306_I2C_ADDR,
+                            SSD1306_COMMAND,
+                            ssd1306_on_array,
+                            sizeof(ssd1306_on_array));
+        display_on = TRUE;
+    }
+}
+/**
+ * @brief         if display is on enable it, do nothing otherwise
+ * @details       function uses global driver state about display state
+ */
+void ssd1306_display_off() {
+    static const uint8_t ssd1306_off_array [] = {
+        SSD1306_DISPLAYOFF
+    };
+    if(display_on) {
+        i2c_write_reg_array(SSD1306_I2C_ADDR,
+                            SSD1306_COMMAND,
+                            ssd1306_off_array,
+                            sizeof(ssd1306_off_array));
+        display_on = FALSE;
+    }
+}
 
-
+#ifdef SSD1306_GRAPH_MODE
+/**
+ * @brief         set pixel in graph buffer
+ * @param[in]     x - x coordinate in buffer
+ * @param[in]     y - y coordinate in buffer
+ * @param[in]     color - white, black or inverce
+ *
+ */
 void ssd1306_drawPixel(uint16_t x, uint16_t y, uint16_t color) {
   if((x < BUFFER_WIDTH) && (y < BUFFER_HEIGHT)) {
     // Pixel is in-bounds. Rotate coordinates if needed.
@@ -158,15 +216,22 @@ void ssd1306_drawPixel(uint16_t x, uint16_t y, uint16_t color) {
       }
   }
 }
-
+/**
+ * @brief         Clear all pixels in buffer
+ */
 void ssd1306_clearDisplayBuffer(void) {
     int i;
     for(i=0; i< sizeof(video_buffer); i++) {
         video_buffer[i] = 0x0;
     }
 }
-
-
+/**
+ * @brief         synchronize display buffer and screen
+ * @param[in]     x_offset - left coordinate where will
+ *                           be displayed buffer content
+ * @param[in]     y_offset - top coordinate where will
+ *                           be displayed buffer content
+ */
 void ssd1306_display_video_buffer(uint8_t x_offset, uint8_t y_offset) {
     ssd1306_display_buffer(
         x_offset, y_offset,
@@ -174,7 +239,11 @@ void ssd1306_display_video_buffer(uint8_t x_offset, uint8_t y_offset) {
         video_buffer,
         sizeof(video_buffer));
 }
-
+#endif
+/**
+ * @brief         Clear display.
+ * This function works a notable time
+ */
 void ssd1306_clear_display(void) {
     const uint8_t cmd_send_video_buffer[] = {
         SSD1306_PAGEADDR,
@@ -191,7 +260,13 @@ void ssd1306_clear_display(void) {
     i2c_memset_reg_array(SSD1306_I2C_ADDR, SSD1306_DATA, 0x0, SSD1306_LCDWIDTH*SSD1306_LCDHEIGHT);
 }
 
-
+/**
+ * @brief         Draw char from specified font
+ * @details       char is index in font table
+ * @param[in]     ch - char index in font table
+ * @param[in]     x - left coordinate
+ * @param[in]     y - top coordinate
+ */
 void ssd1306_display_char(unsigned char ch, uint8_t x, uint8_t y) {
     uint8_t *buf;
     if(ch >= '0' && ch <= '9') {
@@ -213,11 +288,9 @@ void ssd1306_display_char(unsigned char ch, uint8_t x, uint8_t y) {
 
 }
 
-
-
 static void ssd1306_display_buffer(uint8_t x_offset, uint8_t y_offset,
                                    uint8_t width, uint8_t height,
-                                   uint8_t *buf, uint8_t len) {
+                                   const uint8_t *buf, uint8_t len) {
     uint8_t cmd_send_video_buffer[] = {
         SSD1306_PAGEADDR,
         0,
