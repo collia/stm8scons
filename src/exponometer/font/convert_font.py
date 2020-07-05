@@ -8,10 +8,10 @@ def get_char_pixels_from_char(fontname, c, size):
     image = Image.new('RGB', (size, size), (0,0,0))
     draw = ImageDraw.Draw(image)
     # use a truetype font
-    font = ImageFont.truetype(fontname, int(size*1.5))
-    #font = ImageFont.truetype(fontname, int(size))
-    draw.text((0, -(int(size*0.3))), c, font=font)
-    #draw.text((0, -(int(size*0))), c, font=font)
+    #font = ImageFont.truetype(fontname, int(size*1.5))
+    font = ImageFont.truetype(fontname, int(size*1.0))
+    #draw.text((0, -(int(size*0.3))), c, font=font)
+    draw.text((0, -(int(size*0))), c, font=font)
 
     #image.show()
     return image.load();
@@ -34,13 +34,13 @@ def create_char_file(fontname, symbols):
 
         image = Image.new('RGB', (size*len(chars), size), (0,0,0))
         draw = ImageDraw.Draw(image)
-        font = ImageFont.truetype(fontname, int(size*1.5))
-        #font = ImageFont.truetype(fontname, int(size*1.1))
+        #font = ImageFont.truetype(fontname, int(size*1.5))
+        font = ImageFont.truetype(fontname, int(size))
 
         for count, ch in enumerate(chars):
             if isinstance(ch, str):
-                draw.text((count*size, -(int(size*0.3))), ch, font=font)
-                #draw.text((count*(size), -(int(size*0.1))), ch, font=font)
+                #draw.text((count*size, -(int(size*0.3))), ch, font=font)
+                draw.text((count*(size), -(int(size*0))), ch, font=font)
             elif isinstance(ch, tuple):
                 sym_im = Image.open(ch[1]).convert("RGB")
                 image.paste(sym_im, (size*count, 0))
@@ -88,6 +88,7 @@ def generate_c_array( size, pixels):
 def generate_font_files(fontname, symbols):
     result_header = generate_header_head()
     result_source = generate_source_head()
+    result_test_source = generate_source_head()
 
     fonts_enum = "typedef enum {\n"
 
@@ -101,7 +102,7 @@ def generate_font_files(fontname, symbols):
         char_table_enum = "typedef enum {\n"
         char_table_definition = ""
         char_table = "const unsigned char *{}_font_char_table[] = {{\n".format(name.lower())
-
+        char_test_table = "const unsigned char *{}_font_char_table[] = {{\n".format(name.lower())
         result_header += generate_font_size_defines(name, size)
 
         for ch in chars:
@@ -117,19 +118,27 @@ def generate_font_files(fontname, symbols):
                 get_char_name(ch))
             char_table += "\t{}_font_{},\n".format(
                 name.lower(), get_char_name(ch))
+            if isinstance(ch, str):
+                char_test_table += "\t\"{}\", //{}_font_{},\n".format(
+                    ch, name.lower(), get_char_name(ch))
+            else:
+                char_test_table += "\t\"{}\", //{}_font_{},\n".format(
+                    ' ', name.lower(), get_char_name(ch))
         char_table_enum += "\t{}_FONT_MAX,\n}} {}_chars;\n".format(
             name.upper(), name.lower())
         char_table += "};\n"
+        char_test_table += "};\n"
 
         result_header += char_table_enum
         result_header += "extern const unsigned char *{}_font_char_table[];\n".format(name.lower())
         result_source += char_table_definition
         result_source += char_table
+        result_test_source += char_test_table
 
     fonts_enum += "} fonts;\n"
     result_header += fonts_enum
     result_header += generate_header_tail()
-    return (result_header, result_source)
+    return (result_header, result_source, result_test_source)
 
 
 
@@ -138,8 +147,8 @@ if len(sys.argv) < 2:
     exit(1)
 
 
-big_symbol_table = ("big", 16,  string.digits+"luxevmsiof"+"/-. ")
-small_symbol_table = ("small", 8,  string.digits+"isoexpfm"+'/-. ')
+big_symbol_table = ("big", 16,  string.digits+"luxevmsiof"+"+/-. ")
+small_symbol_table = ("small", 8,  string.digits+"isoevpfm"+'+/-. ')
 spec_symbol_table = ("special", 16, [
     ("bat_empty", "symbols/battery_empty.png"),
     ("bat_half", "symbols/battery_half.png"),
@@ -158,6 +167,8 @@ with open("font.h", 'w') as f:
     f.write(files[0])
 with open("font.c", 'w') as f:
     f.write(files[1])
+with open("font_test.c", 'w') as f:
+    f.write(files[2])
 
 create_char_file(sys.argv[1], [big_symbol_table,
                                small_symbol_table,

@@ -7,8 +7,9 @@ env.Append(LINKFLAGS = [
 env.VariantDir('.', '../src', duplicate=0)
 
 env.Append(CPPPATH = [
+    '.',
     '#../inc',
-    '.'
+    '#../font'
     ])
 
 prg = [
@@ -23,5 +24,13 @@ prg = [
         source = [
             'test_exposure.c',
             '../src/exponometer.c',
+        ]
+    ),
+    env.Program(
+        target = 'test_terminal',
+        source = [
+            'test_terminal.c',
+            '../src/terminal.c',
+            '../font/font_test.c',
         ]
     )]
