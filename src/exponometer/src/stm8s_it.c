@@ -1,5 +1,15 @@
+/**
+ * @file    stm8s_it.c
+ * @author  Nikolay
+ * @license MIT
+ * @date    2020-07-05
+ * @brief   stm8 interrupts handlers
+ *
+ * handler should call interrup routine from module.
+ * No additional work should be done here
+ */
+
 #include "stm8s_it.h"
-//#include "main.h"
 #include "i2c.h"
 #include "buttons.h"
 #include "time.h"
@@ -12,7 +22,7 @@ INTERRUPT_HANDLER(TLI_IRQHandler, 0)
 {
 }
 
-INTERRUPT_HANDLER(AWU_IRQHandler, 1)	
+INTERRUPT_HANDLER(AWU_IRQHandler, 1)
 {
 }
 
@@ -87,4 +97,3 @@ INTERRUPT_HANDLER(TIM4_UPD_OVF_IRQHandler, 23)
 INTERRUPT_HANDLER(EEPROM_EEC_IRQHandler, 24)
 {
 }
-

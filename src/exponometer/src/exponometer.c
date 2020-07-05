@@ -1,3 +1,16 @@
+/**
+ * @file    exponometer.c
+ * @author  Nikolay
+ * @license MIT
+ * @date    2020-07-05
+ * @brief   Exposure calculations
+ *
+ * In file is present routine for
+ * - lux to EV calculation
+ * - ISO compensation, defailt is ISO100
+ * - converion EV and f index to f and speed
+ */
+
 #include "stm8s.h"
 #include "exponometer.h"
 
@@ -316,34 +329,55 @@ static const int8_t ev_iso_compensation_table[ISO_MAX-ISO_MIN+1] = {
  40, //4.000000, iso:1600
 };
 
-/*
- From wikipedia: https://en.wikipedia.org/wiki/Exposure_value#EV_as_a_measure_of_luminance_and_illuminance
-And https://stackoverflow.com/questions/5401738/how-to-convert-between-lux-and-exposure-value
-Lux = (2^EV) *2.5
-and from light sensor datasheet: https://datasheets.maximintegrated.com/en/ds/MAX44009.pdf
 
-lux = ((2^exp)*mantissa) *0.045
-
-So, than:
-EV=log2(lux/2.5) = log2((2^exp)*mantissa*0.045/2.5) = exp + log2(mantissa) - 5.8
-
-And 
-*/
-
-//static uint8_t log2(uint8_t value);
 static uint16_t round_speed(uint16_t value);
 
+/**
+ * @brief         Function converts sensor Lux to exposure number for
+ *                passed ISO value
+ * @details       Function uses next idea:
+ * From wikipedia:
+ * https://en.wikipedia.org/wiki/Exposure_value#EV_as_a_measure_of_luminance_and_illuminance
+ * And https://stackoverflow.com/questions/5401738/how-to-convert-between-lux-and-exposure-value
+ * Lux = (2^EV) *2.5
+ * from light sensor datasheet:
+ * https://datasheets.maximintegrated.com/en/ds/MAX44009.pdf
+ * lux = ((2^exp)*mantissa) *0.045
+ *
+ * So, than:
+ * EV=log2(lux/2.5) = log2((2^exp)*mantissa*0.045/2.5) = exp + log2(mantissa) - 5.8
+ *
+ * @param[in]     lux - lux from sensor in format:
+ *                bit 16   12    8         0
+ *                      |    |exp |mantissa|
+ * @param[in]     iso - iso in log scale format
+ *
+ * @return        return EV in fixed point format
+ */
 int16_t lux_to_EV(uint16_t lux, iso_log_scale_t iso) {
     int16_t ev;
     ev = ((lux >> 8) & 0xf) * 10;
-    ev += log2_table[lux & 0xff];//log2(lux & 0xff);
+    ev += log2_table[lux & 0xff];
     ev -= 58;
     if(iso <= ISO_MAX && iso >= ISO_MIN){
         //ev += ev_iso_compensation_table[iso-ISO_MIN];
     }
     return ev;
 }
-
+/**
+ * @brief         Get speed and aperture from table for EV and index
+ * @details       Function calculate speed and aperture for given
+ *                EV and index for aperture value
+ * @param[in]     ev - exposure with ISO compensation
+ * @param[in]     index - number for current aperture
+ * @param[out]    speed - shutter speed in format:
+ *                if flag EXP_SPEED_SECONDS is set - value in seconds
+ *                if EXP_SPEED_MINUTES - value in minutes
+ *                otherwise value is second fraction
+ *
+ * @param[out]    param
+ *
+ */
 void ev_to_exp_pair(int16_t ev,
                     f_number_indx index,
                     uint16_t* speed,
@@ -379,7 +413,12 @@ void ev_to_exp_pair(int16_t ev,
         *speed |= round_speed(1 << shift);
     }
 }
-
+/**
+ * @brief         Convert iso to arith value for printing
+ * @param[in]     iso in log scale
+ *
+ * @return        iso in arithmetic type
+ */
 uint16_t iso_from_log_to_arith(iso_log_scale_t iso) {
     if(iso <= ISO_MAX && iso >=ISO_MIN) {
         return iso_arith_values[iso-ISO_MIN];

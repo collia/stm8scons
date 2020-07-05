@@ -5,7 +5,7 @@
  * @date    2020-07-05
  * @brief   Expometer main routine
  *
- * File contains main function, general logic 
+ * File contains main function, general logic
  * for exponometer and interface routine
  *
  */
@@ -48,105 +48,112 @@ static int16_t min_ev = EV_INCORECT_VAL;
 static int16_t max_ev = EV_INCORECT_VAL;
 static iso_log_scale_t iso = ISO_BASE;
 //Strings
-const unsigned char exp_line[] = {
+static const unsigned char exp_line[] = {
     BIG_FONT_LATIN_SMALL_LETTER_E,
     BIG_FONT_LATIN_SMALL_LETTER_V,
     BIG_FONT_SPACE,
 };
 
-const unsigned char lux_line[] = {
+static const unsigned char lux_line[] = {
     BIG_FONT_LATIN_SMALL_LETTER_L,
     BIG_FONT_LATIN_SMALL_LETTER_U,
     BIG_FONT_LATIN_SMALL_LETTER_X,
 };
 
-const unsigned char iso_big_line[] = {
+static const unsigned char iso_big_line[] = {
     BIG_FONT_LATIN_SMALL_LETTER_I,
     BIG_FONT_LATIN_SMALL_LETTER_S,
     BIG_FONT_LATIN_SMALL_LETTER_O,
     BIG_FONT_SPACE,
 };
 
-const unsigned char error_3_line[] = {
+static const unsigned char error_3_line[] = {
     BIG_FONT_HYPHEN_MINUS,
     BIG_FONT_HYPHEN_MINUS,
     BIG_FONT_HYPHEN_MINUS,
 };
-const unsigned char error_2_line[] = {
+
+static const unsigned char error_2_line[] = {
     BIG_FONT_HYPHEN_MINUS,
     BIG_FONT_HYPHEN_MINUS,
 };
-const unsigned char big_exponent_line[] = {
+
+static const unsigned char big_exponent_line[] = {
     BIG_FONT_SPACE,
     BIG_FONT_LATIN_SMALL_LETTER_E,
 };
-const unsigned char ms_line[] = {
+
+static const unsigned char ms_line[] = {
     BIG_FONT_LATIN_SMALL_LETTER_M,
     BIG_FONT_LATIN_SMALL_LETTER_S,
 };
 
-const unsigned char empty_4_line[] = {
+static const unsigned char empty_4_line[] = {
     BIG_FONT_SPACE,
-    BIG_FONT_SPACE,
-    BIG_FONT_SPACE,
-    BIG_FONT_SPACE,
-};
-const unsigned char empty_3_line[] = {
     BIG_FONT_SPACE,
     BIG_FONT_SPACE,
     BIG_FONT_SPACE,
 };
 
-const unsigned char iso_line[] = {
+static const unsigned char empty_3_line[] = {
+    BIG_FONT_SPACE,
+    BIG_FONT_SPACE,
+    BIG_FONT_SPACE,
+};
+
+static const unsigned char iso_line[] = {
     SMALL_FONT_LATIN_SMALL_LETTER_I,
     SMALL_FONT_LATIN_SMALL_LETTER_S,
     SMALL_FONT_LATIN_SMALL_LETTER_O,
     SMALL_FONT_SPACE,
 };
-const unsigned char exposure_line[] = {
+static const unsigned char exposure_line[] = {
     SMALL_FONT_LATIN_SMALL_LETTER_E,
     SMALL_FONT_LATIN_SMALL_LETTER_V,
     SMALL_FONT_SPACE,
 };
 
-const unsigned char exp_fraction_line[] = {
+static const unsigned char exp_fraction_line[] = {
     BIG_FONT_DIGIT_ONE,
     BIG_FONT_SOLIDUS,
 };
 
-const unsigned char f_line[] = {
+static const unsigned char f_line[] = {
     BIG_FONT_LATIN_SMALL_LETTER_F,
 };
 
-const unsigned char s_f_line[] = {
+static const unsigned char s_f_line[] = {
     SMALL_FONT_LATIN_SMALL_LETTER_F,
 };
 
-const unsigned char s_exp_fraction_line[] = {
+static const unsigned char s_exp_fraction_line[] = {
     SMALL_FONT_DIGIT_ONE,
     SMALL_FONT_SOLIDUS,
 };
 
-const unsigned char minutes_line[] = {
+static const unsigned char minutes_line[] = {
     BIG_FONT_LATIN_SMALL_LETTER_M,
 };
 
-const unsigned char s_minutes_line[] = {
+static const unsigned char s_minutes_line[] = {
     SMALL_FONT_LATIN_SMALL_LETTER_M,
 };
 
-const unsigned char s_error_3_line[] = {
+static const unsigned char s_error_3_line[] = {
     SMALL_FONT_HYPHEN_MINUS,
     SMALL_FONT_HYPHEN_MINUS,
     SMALL_FONT_HYPHEN_MINUS,
 };
 
-const unsigned char s_empty_3_line[] = {
+static const unsigned char s_empty_3_line[] = {
     SMALL_FONT_SPACE,
     SMALL_FONT_SPACE,
     SMALL_FONT_SPACE,
 };
 
+/**
+ * Enum with device work mode
+ */
 typedef enum {
     MODE_CALIBRATION,
 #ifdef FEATURES_EXPONOMETER
@@ -189,7 +196,7 @@ int main()
     uint8_t msg, prev_btn_msg = MESSAGE_BUTTONS_RELEASED;
     bool is_long_pressed;
     bool is_sleep = FALSE;
-
+    // Periphery initialization
     debug_init();
     clock_setup();
     time_init();
@@ -198,7 +205,7 @@ int main()
     battery_init();
 
     enableInterrupts();
-
+    // external devices driver initialization
     ssd1306_init();
     max44009_init();
 
@@ -317,7 +324,7 @@ static void init_config(void) {
     term_print(BIG_FONT, empty_4_line, sizeof(empty_4_line), 4, 2);
     term_print(BIG_FONT, empty_4_line, sizeof(empty_4_line), 0, 3);
     term_print(BIG_FONT, empty_4_line, sizeof(empty_4_line), 4, 3);
-    
+
 }
 #endif
 #ifdef FEATURES_SPEED
@@ -378,7 +385,7 @@ static void run_calibration(uint8_t msg) {
             rc+sizeof(big_exponent_line), 2);
         term_print(BIG_FONT, empty_3_line, sizeof(empty_3_line),
                    rc+sizeof(big_exponent_line), 2);
-        
+
         rc = term_print_fixed_point(BIG_FONT, lux_to_EV(lux, iso), 3, 3, TRUE);
         //term_print_uint(BIG_FONT, lux_to_EV(lux, iso), 3, 3);
         term_print(BIG_FONT, empty_3_line, sizeof(empty_3_line),
@@ -531,22 +538,6 @@ static void print_exposure(fonts font, int16_t ev, uint8_t f_idx, uint8_t column
 
         term_print(font, apt_line, sizeof(f_line), column, row+1);
         if(apt & F_NUM_POINT) {
-            //term_print_int(font,
-            //               (apt & (~F_NUM_POINT))/10,
-            //               column+1, row+1, 1);
-            //term_print(font, dot, sizeof(dot_line), column+1+1, row+1);
-            //term_print_int(font,
-            //               (apt & (~F_NUM_POINT))%10,
-            //               column+3, row+1, 1);
-            /*
-            term_print_char(font, (apt & (~F_NUM_POINT))/10 + zero,
-                            column+1, row+1);
-            term_print_char(font, dot,
-                            column+2, row+1);
-            term_print_char(font, (apt & (~F_NUM_POINT))%10 + zero,
-                            column+3, row+1);
-            term_print(font, spaces, sizeof(empty_3_line), column+1+3, row+1);
-            */
             term_print_fixed_point(font, apt & (~F_NUM_POINT),
                                    column+1, row+1,FALSE );
             term_print(font, spaces, sizeof(empty_3_line), column+1+3, row+1);
@@ -600,4 +591,5 @@ void assert_failed(u8* file, u32 line)
 
   /* Infinite loop */
     debug_blink_slow_forever();
+    while(1);
 }

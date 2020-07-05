@@ -1,3 +1,16 @@
+/**
+ * @file    exponometer.h
+ * @author  Nikolay
+ * @license MIT
+ * @date    2020-07-05
+ * @brief   Exposure calculations
+ *
+ * In file is present routine for
+ * - lux to EV calculation
+ * - ISO compensation, defailt is ISO100
+ * - converion EV and f index to f and speed
+ */
+
 #ifndef _EXPONOMENTER_H_
 #define _EXPONOMENTER_H_
 

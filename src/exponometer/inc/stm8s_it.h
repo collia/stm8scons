@@ -1,3 +1,12 @@
+/**
+ * @file    stm8s_it.c
+ * @author  Nikolay
+ * @license MIT
+ * @date    2020-07-05
+ * @brief   stm8 interrupts handlers
+ *
+ */
+
 #ifndef __STM8S_IT_H
 #define __STM8S_IT_H
 
@@ -28,4 +37,3 @@ INTERRUPT_HANDLER(ADC1_IRQHandler, 22);
 INTERRUPT_HANDLER(TIM4_UPD_OVF_IRQHandler, 23);
 INTERRUPT_HANDLER(EEPROM_EEC_IRQHandler, 24);
 #endif /* __STM8S_IT_H */
-

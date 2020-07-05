@@ -1,9 +1,18 @@
+/**
+ * @file    i2c.c
+ * @author  Nikolay
+ * @license MIT
+ * @date    2020-07-05
+ * @brief   i2c driver wrapper for stm8
+ *
+ */
+
+
 #include "i2c.h"
 #include "stm8s_i2c.h"
 #include "stm8s_gpio.h"
 #include "debug.h"
 
-#define BUFFERSIZE  10
 #define I2C_SPEED 100000
 
 #define I2C_WAIT_FLAG_TIMEOUT(cond) {\
@@ -22,7 +31,6 @@ int i2c_master_init() {
     GPIO_Init(GPIOB, GPIO_PIN_4, GPIO_MODE_OUT_OD_HIZ_FAST);
     GPIO_Init(GPIOB, GPIO_PIN_5, GPIO_MODE_OUT_OD_HIZ_FAST);
 
-    //I2C_DeInit();
     /* I2C Initialize */
     I2C_Init(I2C_SPEED,
              0x78,
@@ -31,9 +39,6 @@ int i2c_master_init() {
              I2C_ADDMODE_7BIT,
              16
              /*CLK_GetClockFreq() / 1000000*/);
-
-    /* Enable Buffer and Event Interrupt*/
-    //I2C_ITConfig((I2C_IT_TypeDef)(I2C_IT_EVT | I2C_IT_BUF | I2C_IT_ERR) , ENABLE);
     I2C_Cmd(ENABLE);
     return 0;
 }
@@ -57,7 +62,7 @@ int i2c_read_byte(uint8_t dev, uint8_t reg) {
    I2C_WAIT_FLAG(!I2C_CheckEvent(I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED));
    I2C_AcknowledgeConfig(I2C_ACK_NONE);
    I2C_WAIT_FLAG_TIMEOUT(!(I2C_CheckEvent(I2C_EVENT_MASTER_BYTE_RECEIVED)));
-   
+
    byte = I2C_ReceiveData();
 
    I2C_GenerateSTOP(ENABLE);
@@ -66,8 +71,7 @@ int i2c_read_byte(uint8_t dev, uint8_t reg) {
 }
 
 
-int i2c_write_reg_array(uint8_t dev, uint8_t reg, uint8_t* data, uint16_t length) {
-
+int i2c_write_reg_array(uint8_t dev, uint8_t reg, const uint8_t* data, uint16_t length) {
     int bytes_sent = 0;
     I2C_GenerateSTART(ENABLE);
     I2C_WAIT_FLAG(!I2C_CheckEvent(I2C_EVENT_MASTER_MODE_SELECT));
@@ -85,7 +89,6 @@ int i2c_write_reg_array(uint8_t dev, uint8_t reg, uint8_t* data, uint16_t length
 }
 
 int i2c_memset_reg_array(uint8_t dev, uint8_t reg, uint8_t val, uint16_t length) {
-
     int bytes_sent = 0;
     I2C_GenerateSTART(ENABLE);
     I2C_WAIT_FLAG(!I2C_CheckEvent(I2C_EVENT_MASTER_MODE_SELECT));
@@ -100,4 +103,3 @@ int i2c_memset_reg_array(uint8_t dev, uint8_t reg, uint8_t val, uint16_t length)
     I2C_GenerateSTOP(ENABLE);
     return bytes_sent;
 }
-

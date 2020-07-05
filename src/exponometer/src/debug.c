@@ -1,3 +1,14 @@
+/**
+ * @file    debug.c
+ * @author  Nikolay
+ * @license MIT
+ * @date    2020-07-05
+ * @brief   File contains API for early stage debug,
+ *          main idea to blink with GPIO with different
+ *          frequency
+ *
+ * Disabled for space optimization
+ */
 
 #include "stm8s.h"
 #include "stm8s_gpio.h"
@@ -9,7 +20,7 @@ void debug_init() {
 #ifdef DEBUG
     GPIO_Init(DEBUG_PORT, DEBUG_PIN, GPIO_MODE_OUT_PP_LOW_FAST);
     GPIO_WriteHigh(DEBUG_PORT, DEBUG_PIN);
-    //GPIO_WriteReverse(DEBUG_PORT, DEBUG_PIN);    
+    //GPIO_WriteReverse(DEBUG_PORT, DEBUG_PIN);
 #endif
 }
 
@@ -37,7 +48,7 @@ void debug_blink_slow_forever() {
 void debug_blink_1_sec() {
 #ifdef oDEBUG
     int i, j;
-    
+
     GPIO_WriteReverse(DEBUG_PORT, DEBUG_PIN);
     for(i = 0; i < 16000; i++)
         for(j = 0; j < 10; j++);
@@ -46,7 +57,7 @@ void debug_blink_1_sec() {
 
 
 void debug_blink_once() {
-#ifdef DEBUG    
+#ifdef DEBUG
     GPIO_WriteReverse(DEBUG_PORT, DEBUG_PIN);
 #endif
 }

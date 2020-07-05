@@ -1,3 +1,15 @@
+/**
+ * @file    max44009.c
+ * @author  Nikolay
+ * @license MIT
+ * @date    2020-07-05
+ * @brief   Driver for light sensor MAX 44009
+ *
+ * Driver works with light sensor connected by i2c 
+ * with address 0x94.
+ * external interrup connected to a.3, but it is not used now
+ */
+
 #include "max44009.h"
 #include "stm8s.h"
 #include "i2c.h"
@@ -17,8 +29,11 @@
 #define MAX44009_TRESHOLD_LOW   6
 #define MAX44009_TRESHOLD_TME   7
 
-
-
+/**
+ * @brief         initialization
+ * @details       configure GPIO A.3 for input mode
+ *                this port connected to light sensor inrrupt line
+ */
 void max44009_init() {
     EXTI_SetExtIntSensitivity(EXTI_PORT_GPIOA,
                               EXTI_SENSITIVITY_RISE_FALL);
@@ -29,9 +44,17 @@ void max44009_init() {
 
 }
 
-
-uint16_t max44009_get_lux() {
-    uint16_t res;
+/**
+ * @brief         Read sensor lux
+ *
+ * @return        return vlue in format
+ *                  e3 e2 e1 e0 m7 m6 m5 m4 m3 m2 m1 m0
+ *                 where e - bits for exponent
+ *                       m - bits for mantissa
+ *                 or -1 for not sucess
+ */
+int16_t max44009_get_lux() {
+    int16_t res;
     uint8_t low ;
     uint8_t hi;
     int rc;

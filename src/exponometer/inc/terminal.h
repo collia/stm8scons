@@ -1,3 +1,15 @@
+/**
+ * @file    terminal.h
+ * @author  Nikolay
+ * @license MIT
+ * @date    2020-07-05
+ * @brief   Module for minimal terminal implementation on
+ *          SSD1306 screen.
+ *
+ * Allowed printing chars, integers and signed unsigned fixed point values.
+ * If char is out of screen it will be skipped
+ */
+
 #ifndef _TERMINAL_H_
 #define _TERMINAL_H_
 void term_print_char(fonts f, unsigned char ch, uint8_t column, uint8_t row);

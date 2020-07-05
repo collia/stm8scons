@@ -46,7 +46,10 @@ static uint8_t get_battery_state(uint16_t adc_val) {
     }
     return 0;
 }
-
+/**
+ * @brief         Battery module initialization
+ * @details       Enable ADC, and starts ADC on D.6
+ */
 void battery_init() {
     ADC1_DeInit();
     /*  Init GPIO for ADC2 */
@@ -60,7 +63,17 @@ void battery_init() {
               DISABLE);
     ADC1_Cmd(ENABLE);
 }
-
+/**
+ * @brief         Get battery voltage
+ * @details       Function read from ADC voltage
+ *                value from calibrated source, and
+ *                calculate current pover voltage
+ * @param[in/out] result - pointer to voltage result.
+ *                         Fixed point value.
+ *                         for 3.3V will be 33
+ *
+ * @return        Reading success
+ */
 bool battery_get_voltage(uint8_t* result) {
      if(ADC1_GetFlagStatus(ADC1_FLAG_EOC)) {
         *result = get_battery_state(

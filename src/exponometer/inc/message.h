@@ -1,6 +1,18 @@
+/**
+ * @file    message.c
+ * @author  Nikolay
+ * @license MIT
+ * @date    2020-07-05
+ * @brief   Message interruction routine
+ *
+ */
+
 #ifndef _MESSAGE_H_
 #define _MESSAGE_H_
 
+/**
+ * Allowed messages
+ */
 #define MESSAGE_MODE_BUTTON        (0)
 #define MESSAGE_UP_BUTTON          (1)
 #define MESSAGE_DOWN_BUTTON        (2)

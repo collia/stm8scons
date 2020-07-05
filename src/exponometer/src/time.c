@@ -1,10 +1,24 @@
+/**
+ * @file    time.c
+ * @author  Nikolay
+ * @license MIT
+ * @date    2020-07-05
+ * @brief   Time supporting module
+ *
+ * For time meashuring with ms accuransy. Is used TIM4 timer
+ */
 
 #include "stm8s.h"
 #include "stm8s_tim4.h"
 #include "time.h"
 
+/// global variable with current time value
 volatile uint32_t time;
 
+/**
+ * @brief         init time module
+ * @details       Configure TIM4 for tick period 1ms. Needs interrupts.
+ */
 void time_init() {
     /* TIM4 configuration:
    - TIM4CLK is set to 16 MHz, the TIM4 Prescaler is equal to 128 so the TIM1 counter
@@ -27,9 +41,11 @@ void time_init() {
   TIM4_Cmd(ENABLE);
 
 }
+/**
+ * @brief         tim4 irq handler
+ */
 void time_irq_handler() {
     time++;
     TIM4_ClearITPendingBit(TIM4_IT_UPDATE);
     //debug_blink_once();
 }
-

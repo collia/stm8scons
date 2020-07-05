@@ -1,3 +1,14 @@
+/**
+ * @file    buttons.c
+ * @author  Nikolay
+ * @license MIT
+ * @date    2020-07-05
+ * @brief   File contains functions for buttons handlings
+ *
+ * Buttons connected for C.4 C.5 C.6
+ * Interrups should be enabled
+ */
+
 #include "stm8s.h"
 #include "stm8s_gpio.h"
 #include "stm8s_exti.h"
@@ -12,7 +23,9 @@
 #define BUTTON_MODE_GPIO_PIN  GPIO_PIN_5
 
 #define BUTTON_DELAY_MS       (10)
-
+/**
+ * @brief         Initialize buttons gpio
+ */
 void buttons_init() {
     EXTI_SetExtIntSensitivity(EXTI_PORT_GPIOC,
                               EXTI_SENSITIVITY_RISE_FALL);
@@ -27,7 +40,10 @@ void buttons_init() {
               BUTTON_MODE_GPIO_PIN,
               GPIO_MODE_IN_PU_IT);
 }
-
+/**
+ * @brief         Control buttons irq
+ * @param[in]     en - new interrupt status
+ */
 void button_set_irq_en(bool en) {
     disableInterrupts();
     if(en) {
@@ -41,7 +57,10 @@ void button_set_irq_en(bool en) {
     }
     enableInterrupts();
 }
-
+/**
+ * @brief         Read current buttons values and sends
+ *                corresponding messages
+ */
 void buttons_send_status() {
     uint8_t pins = GPIO_ReadInputData(BUTTON_GPIO_GROUP);
     if(!(pins & BUTTON_UP_GPIO_PIN)) {
@@ -63,7 +82,12 @@ void buttons_send_status() {
     }
 
 }
-
+/**
+ * @brief         GPIO C IRQ handler
+ * @details       function sends message to main module
+ *                that was reseived after delay. needed for
+ *                contact bounce compensation
+ */
 void buttons_irq_handler() {
     message_send(MESSAGE_BUTTONS_IRQ, BUTTON_DELAY_MS);
     button_set_irq_en(0);
