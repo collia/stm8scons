@@ -12,7 +12,8 @@
 
 
 void message_pool_init();
-void message_send(uint8_t msg, uint8_t delay);
+void message_send(uint8_t msg, uint32_t delay);
+void message_resend(uint8_t msg, uint32_t delay);
 uint32_t message_get_msg_time(uint8_t msg);
 uint8_t message_resv();
 #endif

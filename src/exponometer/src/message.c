@@ -17,7 +17,7 @@ void message_pool_init() {
         messages[i].flag = 0;
     }
 }
-void message_send(uint8_t msg, uint8_t delay) {
+void message_send(uint8_t msg, uint32_t delay) {
     if(msg < MESSAGE_NUMBER) {
         if(time > messages[msg].time) {
                messages[msg].flag = 1;
@@ -25,7 +25,7 @@ void message_send(uint8_t msg, uint8_t delay) {
         }
     }
 }
-void message_resend(uint8_t msg, uint8_t delay) {
+void message_resend(uint8_t msg, uint32_t delay) {
     if(msg < MESSAGE_NUMBER) {
         messages[msg].flag = 1;
         messages[msg].time = time+delay;
