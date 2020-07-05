@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
-
+#include <math.h>
 #include "exponometer.h"
 
-void print_f(uint8_t f) {
+static void print_f(uint8_t f) {
     if(f & F_NUM_POINT) {
         printf("f%2.1f", ((float)(f & (~F_NUM_POINT)))/10);
     } else {
@@ -13,7 +13,7 @@ void print_f(uint8_t f) {
 }
 
 
-void print_speed(uint16_t s) {
+static void print_speed(uint16_t s) {
     if((s & (~(EXP_SPEED_MINUTES|EXP_SPEED_SECONDS))) == 0) {
         printf(" ------");
     } else if(s & EXP_SPEED_MINUTES) {
@@ -25,14 +25,33 @@ void print_speed(uint16_t s) {
     }
 }
 
+static void print_iso() {
+    for(int i = ISO_MIN; i <= ISO_MAX; i++) {
+        printf("%d = %4"PRIu16"\n",i , iso_from_log_to_arith(i)); 
+    }
+}
+
+static void print_ev_iso_compensation() {
+    int8_t value;
+    uint16_t iso;
+    double real_value;
+    printf("static const int8_t ev_iso_compensation_table[ISO_MAX-ISO_MIN+1] = {\n");
+    for(uint8_t i = ISO_MIN; i <= ISO_MAX; i++) {
+        iso = iso_from_log_to_arith(i);
+        real_value = log2((double)iso/100);
+        value = (int8_t)(lround(real_value*10));
+        printf(" %"PRIi8", //%f, iso:%"PRIu16"\n", value, real_value, iso);
+    }
+    printf("};\n");
+}
 
 int main(void) {
     uint16_t speed;
     uint8_t apt;
-    for(int16_t e = -15; e < 21; e++) {
+    for(int16_t e = -150; e < 210; e++) {
         printf("%+3d:", e);
         for(f_number_indx f = 0; f < F_NUMBER_MAX; f++){
-            lux_to_EV_pair(e, f,
+            ev_to_exp_pair(e, f,
                            &speed,
                            &apt);
             printf(" ");
@@ -43,5 +62,7 @@ int main(void) {
         }
         printf("\n");
     }
+    print_iso();
+    print_ev_iso_compensation();
     return 0;
 }
