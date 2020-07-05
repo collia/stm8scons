@@ -8,8 +8,10 @@
 #include "time.h"
 #include "message.h"
 #include "exponometer.h"
+#include "battery.h"
 #include "stm8s_it.h"
 
+#define DEVICE_SLEEP_TIMEOUT_MS  (20*1000)
 
 static void clock_setup(void);
 static void show_status();
@@ -177,6 +179,7 @@ int main()
     time_init();
     i2c_master_init();
     buttons_init();
+    battery_init();
 
     enableInterrupts();
 
@@ -233,29 +236,26 @@ int main()
 }
 
 static void clock_setup(void) {
-    //CLK_DeInit();
-
-    //CLK_HSECmd(DISABLE);
-    //CLK_LSICmd(DISABLE);
-    //CLK_HSICmd(ENABLE);
     while(CLK_GetFlagStatus(CLK_FLAG_HSIRDY) == FALSE);
     CLK_ClockSwitchCmd(ENABLE);
     CLK_HSIPrescalerConfig(CLK_PRESCALER_HSIDIV8);
     CLK_SYSCLKConfig(CLK_PRESCALER_CPUDIV2);
     CLK_ClockSwitchConfig(CLK_SWITCHMODE_AUTO, CLK_SOURCE_HSI,
                           DISABLE, CLK_CURRENTCLOCKSTATE_ENABLE);
-    //CLK_PeripheralClockConfig(CLK_PERIPHERAL_SPI, DISABLE);
     CLK_PeripheralClockConfig(CLK_PERIPHERAL_I2C, ENABLE);
-    CLK_PeripheralClockConfig(CLK_PERIPHERAL_ADC, DISABLE);
-    //CLK_PeripheralClockConfig(CLK_PERIPHERAL_AWU, DISABLE);
-    //CLK_PeripheralClockConfig(CLK_PERIPHERAL_UART1, DISABLE);
-    //CLK_PeripheralClockConfig(CLK_PERIPHERAL_TIMER1, DISABLE);
-    //CLK_PeripheralClockConfig(CLK_PERIPHERAL_TIMER2, DISABLE);
+    CLK_PeripheralClockConfig(CLK_PERIPHERAL_ADC, ENABLE);
     CLK_PeripheralClockConfig(CLK_PERIPHERAL_TIMER4, ENABLE);
 }
 
 static void init_calibration(void) {
-    //term_print(BIG_FONT, empty_4_line, sizeof(empty_4_line), 0, 1);
+    term_print(SMALL_FONT, iso_line, sizeof(iso_line), 0, 0);
+    term_print_uint(SMALL_FONT,
+                    10,
+                    1, 1);
+
+    term_print_uint(SMALL_FONT,
+                    iso_from_log_to_arith(iso),
+                    4, 0);
     term_print(BIG_FONT, lux_line, sizeof(lux_line), 0, 1);
     term_print(BIG_FONT, error_3_line, sizeof(error_3_line), 0, 2);
     term_print(BIG_FONT, big_exponent_line, sizeof(big_exponent_line), 3, 2);
@@ -303,8 +303,19 @@ static void init_delay(void) {
 
 static void show_status(void) {
     static int i = 0;
+    uint8_t voltage;
     if(i == 0) {
-        ssd1306_display_char(SPECIAL_FONT, SPECIAL_FONT_BAT_CHRG, 128 - 16, 0);
+        if(battery_get_voltage(&voltage)){
+            if(voltage > 30) {
+                ssd1306_display_char(SPECIAL_FONT, SPECIAL_FONT_BAT_CHRG, 128 - 16, 0);
+            } else if(voltage >= 29) {
+                ssd1306_display_char(SPECIAL_FONT, SPECIAL_FONT_BAT_FULL, 128 - 16, 0);
+            } else if(voltage >= 28) {
+                ssd1306_display_char(SPECIAL_FONT, SPECIAL_FONT_BAT_HALF, 128 - 16, 0);
+            } else {
+                ssd1306_display_char(SPECIAL_FONT, SPECIAL_FONT_BAT_EMPTY, 128 - 16, 0);
+            }
+        }
     }
     if(++i > 16000)
         i = 0;
@@ -313,6 +324,8 @@ static void show_status(void) {
 static void run_calibration(uint8_t msg) {
     static int i = 0;
     int lux=2;
+    uint8_t rc;
+    uint8_t voltage = 0;
     //for(i = 0; i < 24000; i++);
     //debug_blink_1_sec();
     if(i++ < 1600) {
@@ -325,13 +338,28 @@ static void run_calibration(uint8_t msg) {
         term_print(BIG_FONT, error_2_line, sizeof(error_2_line), 5, 2);
         term_print(BIG_FONT, error_2_line, sizeof(error_2_line), 4, 3);
     } else {
-        term_print_int(BIG_FONT,
+        rc = term_print_uint(BIG_FONT,
             lux & 0xff,
-            0, 2, 3);
-        term_print_int(BIG_FONT,
+            0, 2);
+        term_print(BIG_FONT,
+                   big_exponent_line,
+                   sizeof(big_exponent_line), rc, 2);
+        rc += term_print_uint(BIG_FONT,
             (lux & 0xf00) >> 8,
-            5, 2, 2);
-        term_print_int(BIG_FONT, lux_to_EV(lux), 4, 3, 2);
+            rc+sizeof(big_exponent_line), 2);
+        term_print(BIG_FONT, empty_3_line, sizeof(empty_3_line),
+                   rc+sizeof(big_exponent_line), 2);
+        
+        rc = term_print_fixed_point(BIG_FONT, lux_to_EV(lux, iso), 3, 3, TRUE);
+        //term_print_uint(BIG_FONT, lux_to_EV(lux, iso), 3, 3);
+        term_print(BIG_FONT, empty_3_line, sizeof(empty_3_line),
+                   rc+3, 3);
+    }
+    if(battery_get_voltage(&voltage)) {
+        term_print_fixed_point(SMALL_FONT,
+                               voltage,
+                               1, 1, TRUE);
+
     }
 }
 static void run_exposure(uint8_t msg) {

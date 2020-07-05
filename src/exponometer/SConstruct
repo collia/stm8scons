@@ -54,6 +54,7 @@ prg = env.Program(
         'build/src/main.c',
         'build/src/terminal.c',
         'build/src/exponometer.c',
+        'build/src/battery.c',
         'build/src/buttons.c',
         'build/src/message.c',
         'build/src/time.c',
@@ -67,6 +68,7 @@ prg = env.Program(
         'build/stm8/stm8s_clk.c',
         'build/stm8/stm8s_tim4.c',
         'build/stm8/stm8s_exti.c',
+        'build/stm8/stm8s_adc1.c',
         'build/font/font.c'
     ]
 )
